@@ -16,6 +16,7 @@ class ManageDb:
 
     SQL_CAT_INSERT = """INSERT INTO category (name,url) VALUES (%(name)s, %(url)s)"""
     list_of_prod_id = []
+    prod_from_selected_cat = ()
 
     @classmethod
     def verify_prerequisite(cls):
@@ -119,16 +120,29 @@ class ManageDb:
                 cls.cursor.execute(f"SELECT {what_to_select[0]},{what_to_select[1]} FROM {name_of_table}")"""
         cls.list_of_prod_id = []
 
+        sql_sentence = ""
+
         try:
-            cls.cursor.execute(f"SELECT {what_to_select} FROM {name_of_table}")
+            sql_sentence = f"SELECT {what_to_select} FROM {name_of_table}"
 
         except:
-            cls.cursor.execute(f"SELECT {what_to_select[0]},{what_to_select[1]} FROM {name_of_table}")
+            sql_sentence = f"SELECT {what_to_select[0]},{what_to_select[1]} FROM {name_of_table}"
 
+        print(sql_sentence)
+        cls.cursor.execute(sql_sentence)
         rows = cls.cursor.fetchall()
-        for tup in rows:  # display in a convenient way
+        return rows
+        """for tup in rows:  # display in a convenient way
             cls.list_of_prod_id.append(tup)
-            print(tup)
+            print(tup)"""
+
+
+    @classmethod
+    def print_result(cls, results):
+
+        for items in results:
+            cls.list_of_prod_id.append(items)
+            print(items)
 
 
     @classmethod
@@ -180,23 +194,24 @@ class ManageDb:
                 list_of_splited_items = list_of_splited_categories
             else:
                 print("BEUG")
-            temp_all = []
-            final_temp = []
 
-            for f in range(len(list_of_splited_items)):
-                for i in list_of_splited_items:
-                    temp = i.split(",")
-                    temp_all.append(temp)
+            splited_items = []
+            splited_and_striped_item = []
 
-            for i in temp_all:
-                for x in i:
-                    final_temp.append(x.strip())
-            ready = list(set(final_temp))
-            print(ready)
+            for my_length in range(len(list_of_splited_items)):
+                for item in list_of_splited_items:
+                    temp = item.split(",")
+                    splited_items.append(temp)
 
-            for z in ready:
-                print(z)
-                query_item_id = f'SELECT id FROM {name_of_table2} WHERE name = "{z}"'
+            for item_list in splited_items:
+                for item in item_list:
+                    splited_and_striped_item.append(item.strip())
+            cleaned_list_of_items = list(set(splited_and_striped_item))
+            print(cleaned_list_of_items)
+
+            for item in cleaned_list_of_items:
+
+                query_item_id = f'SELECT id FROM {name_of_table2} WHERE name = "{item}"'
                 print(query_item_id)
 
                 cls.cursor.execute(query_item_id)
@@ -207,6 +222,8 @@ class ManageDb:
 
                 try: # parfois renvoie plusieru fois la meme infi (ex: (122,45) (122,45) (122,44) vusiblement cela se rpoduit lors de cat introuvable comme des cat en anglais
                     query_insert = f"INSERT INTO {name_of_table3} ({column1}, {column2}) VALUES (%s, %s)"
+                    print(query_insert)
+                    print(my_product_id[0], my_item_id[0])
                     cls.cursor.execute(query_insert, (my_product_id[0], my_item_id[0]))
                     # the result of the select is a lone tuples, so i select just the data not the tuple.
 
@@ -214,33 +231,44 @@ class ManageDb:
                     cat_unfounded.append(my_item_id)
                     continue
 
+        cls.connexion.commit()
+
     @classmethod
     def display_categories(cls):
 
-        cls.select((COLUMN[4], COLUMN[0]), f'{NAME_OF_TABLE[0]} ORDER BY name')
+        result = cls.select((COLUMN[4], COLUMN[0]), f'{NAME_OF_TABLE[0]} ORDER BY name')
+        cls.print_result(result)
 
         cat_nbr = Interactions.selection(NAMES_IN_FRENCH[0])
-        cls.select((COLUMN[8], COLUMN[5]), f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{cat_nbr}"')
+        cls.prod_from_selected_cat = cls.select((COLUMN[8], COLUMN[5]), f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{cat_nbr}"')
 
 
     @classmethod
     def display_products(cls):
 
-        print('\nVoici les produits faisant partis de cette catégorie:\n '
+        print('\nVoici les produits faisant partis de cette catégorie:\n'
               'Vous pouvez retourner aux catégories en tapant 0\n')
 
-        for i in cls.list_of_prod_id:  # display product name and id depending of the category id
-            cls.select((COLUMN[4], COLUMN[0]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {i[0]}")
+        for my_product in cls.prod_from_selected_cat:  # display product name and id depending of the category id
+            result = cls.select((COLUMN[4], COLUMN[0]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
+            cls.print_result(result)
 
         prod_nbr = Interactions.selection(NAMES_IN_FRENCH[1])
 
         if prod_nbr == 0:
             cls.display_categories()
         else:
-            cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {prod_nbr}")
+            res = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {prod_nbr}")
 
-            for i in cls.list_of_prod_id:  # display the name and the nutriscore of the selected product
-                print(f'\nLe nutriscore de {i[1]} est {i[4].capitalize()}')
+            for my_product in res:  # display the name and the nutriscore of the selected product
+                print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}')
+
+        # EN TEST : condition pour ne pas pouvoir entrer un chiffre autre que ceux de la list_of_prod_id
+        list_of_id = []
+        for id in cls.list_of_prod_id:
+            list_of_id.append(id[0])
+            print("Ce chiffre ne correspond pas  a un produit de la catégorie que vous avez choisis")
+
 
     @classmethod
     def compare_products(cls):
