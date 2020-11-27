@@ -33,22 +33,23 @@ def main():
     # build and fill the data base:
     ManageDb.build()
     ManageDb.fill(INSERT_CATS, Category.instantiated_categories)
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[0])"""
+
     ManageDb.fill(INSERT_STORES, Store.instantiated_stores)
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[2])"""
+
     ManageDb.fill(INSERT_BRANDS, Brand.instantiated_brands)
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[3])"""
+
     ManageDb.fill(INSERT_PRODUCTS, Product.instantiated_products)
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[1])"""
+
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[2],
                         NAME_OF_TABLE[4], COLUMN[8], COLUMN[6])
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[4])"""
+
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[3],
                         NAME_OF_TABLE[5], COLUMN[8], COLUMN[7])
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[5])"""
+
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[0],
                         NAME_OF_TABLE[6], COLUMN[8], COLUMN[5])
-    """ManageDb.select(COLUMN[9], NAME_OF_TABLE[6])"""
+    x=ManageDb.select(COLUMN[9], NAME_OF_TABLE[6])
+    ManageDb.print_result(x)
 
     # application:
     print(GREETING_MESSAGE)

@@ -132,10 +132,6 @@ class ManageDb:
         cls.cursor.execute(sql_sentence)
         rows = cls.cursor.fetchall()
         return rows
-        """for tup in rows:  # display in a convenient way
-            cls.list_of_prod_id.append(tup)
-            print(tup)"""
-
 
     @classmethod
     def print_result(cls, results):
@@ -166,71 +162,79 @@ class ManageDb:
     @classmethod
     def insert_n_n(cls, instantiated_list, name_of_table1, name_of_table2, name_of_table3, column1, column2):
         """
-            Insertion des données dans la base (n-n)
+            Préparation et insertion des données dans les bases (n-n)
         """
         cat_unfounded = []
 
         for product in instantiated_list:
+
+            my_list_of_product_id = []
             my_product_id = ()
             my_item_id = ()
 
             query_product_id = f'SELECT id FROM {name_of_table1} WHERE name = "{product.name}"'
             print(query_product_id)
             cls.cursor.execute(query_product_id)
+
             for row in cls.cursor:
                 my_product_id = row
+                my_list_of_product_id.append(my_product_id)
+
                 print(my_product_id)
 
-            list_of_splited_items = []
 
-            if name_of_table2 == 'store':
-                list_of_splited_stores = product.store.split(",")
-                list_of_splited_items = list_of_splited_stores
-            elif name_of_table2 == 'brand':
-                list_of_splited_brands = product.brand.split(",")
-                list_of_splited_items = list_of_splited_brands
-            elif name_of_table2 == 'category':
-                list_of_splited_categories = product.category.split(",")
-                list_of_splited_items = list_of_splited_categories
-            else:
-                print("BEUG")
+            for my_prod_id in my_list_of_product_id:
 
-            splited_items = []
-            splited_and_striped_item = []
+                list_of_splited_items = []
 
-            for my_length in range(len(list_of_splited_items)):
-                for item in list_of_splited_items:
-                    temp = item.split(",")
-                    splited_items.append(temp)
+                if name_of_table2 == 'store':
+                    list_of_splited_stores = product.store.split(",")
+                    list_of_splited_items = list_of_splited_stores
+                elif name_of_table2 == 'brand':
+                    list_of_splited_brands = product.brand.split(",")
+                    list_of_splited_items = list_of_splited_brands
+                elif name_of_table2 == 'category':
+                    list_of_splited_categories = product.category.split(",")
+                    list_of_splited_items = list_of_splited_categories
+                else:
+                    print("Erreur dans le nom de l'argument")
 
-            for item_list in splited_items:
-                for item in item_list:
-                    splited_and_striped_item.append(item.strip())
-            cleaned_list_of_items = list(set(splited_and_striped_item))
-            print(cleaned_list_of_items)
+                splited_items = []
+                splited_and_striped_item = []
 
-            for item in cleaned_list_of_items:
+                for my_length in range(len(list_of_splited_items)):
+                    for item in list_of_splited_items:
+                        temp = item.split(",")
+                        splited_items.append(temp)
 
-                query_item_id = f'SELECT id FROM {name_of_table2} WHERE name = "{item}"'
-                print(query_item_id)
+                for item_list in splited_items:
+                    for item in item_list:
+                        splited_and_striped_item.append(item.strip())
+                cleaned_list_of_items = list(set(splited_and_striped_item))
+                print(cleaned_list_of_items)
 
-                cls.cursor.execute(query_item_id)
+                for item in cleaned_list_of_items: # cleaned list of stores, brands or categories
 
-                for line in cls.cursor:  # this method get a tuple instead of a list of tuples with fetch.
-                    my_item_id = line
-                    print(my_item_id)
+                    query_item_id = f'SELECT id FROM {name_of_table2} WHERE name = "{item}"'
+                    print(query_item_id)
+                    cls.cursor.execute(query_item_id)
+                    my_item_id = () # actualise la variable pour éviter d'injecter les catégories non trouvé par l'API qui étient remplacé par es données précede,tes
 
-                try: # parfois renvoie plusieru fois la meme infi (ex: (122,45) (122,45) (122,44) vusiblement cela se rpoduit lors de cat introuvable comme des cat en anglais
-                    query_insert = f"INSERT INTO {name_of_table3} ({column1}, {column2}) VALUES (%s, %s)"
-                    print(query_insert)
-                    print(my_product_id[0], my_item_id[0])
-                    cls.cursor.execute(query_insert, (my_product_id[0], my_item_id[0]))
-                    # the result of the select is a lone tuples, so i select just the data not the tuple.
+                    for line in cls.cursor:
+                        my_item_id = line
+                        print(my_item_id)
 
-                except IndexError:  # some indexerror occures when a name in another language is found (english or german mostly)
-                    cat_unfounded.append(my_item_id)
-                    continue
+                    try:
+                        query_insert = f"INSERT INTO {name_of_table3} ({column1}, {column2}) VALUES (%s, %s)"
+                        print(query_insert)
+                        print(my_prod_id[0], my_item_id[0])
+                        cls.cursor.execute(query_insert, (my_prod_id[0], my_item_id[0]))
 
+                    except IndexError:  # some indexerror occures when a name in another language is found (english or german mostly)
+                        cat_unfounded.append(my_product_id)
+                        continue
+
+            print(cat_unfounded)
         cls.connexion.commit()
 
     @classmethod
