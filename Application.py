@@ -14,8 +14,11 @@ def main():
 
     # get and clean the data:
     PrepareData.get_categories()
+
     PrepareData.get_and_sort_products()
+
     PrepareData.calibrate(PrepareData.raw_products)
+
     PrepareData.instantiate(DICT_OF_CLASSES["Product"], PrepareData.cleaned_products)
 
     STORES = [store.store for store in Product.instantiated_products]
@@ -24,45 +27,59 @@ def main():
 
     PrepareData.split_and_set(STORES)
     PrepareData.instantiate(DICT_OF_CLASSES["Store"], PrepareData.setted_items)
+
     PrepareData.split_and_set(BRANDS)
     PrepareData.instantiate(DICT_OF_CLASSES["Brand"], PrepareData.setted_items)
+
     PrepareData.split_and_set(CATEGORIES)
     PrepareData.get_url(PrepareData.setted_items)
     PrepareData.instantiate(DICT_OF_CLASSES["Category"], PrepareData.cleaned_cat_with_url)
 
     # build and fill the data base:
     ManageDb.build()
+
     ManageDb.fill(INSERT_CATS, Category.instantiated_categories)
-
     ManageDb.fill(INSERT_STORES, Store.instantiated_stores)
-
     ManageDb.fill(INSERT_BRANDS, Brand.instantiated_brands)
-
     ManageDb.fill(INSERT_PRODUCTS, Product.instantiated_products)
 
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[2],
                         NAME_OF_TABLE[4], COLUMN[8], COLUMN[6])
-
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[3],
                         NAME_OF_TABLE[5], COLUMN[8], COLUMN[7])
-
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[0],
                         NAME_OF_TABLE[6], COLUMN[8], COLUMN[5])
-    x=ManageDb.select(COLUMN[9], NAME_OF_TABLE[6])
-    ManageDb.print_result(x)
+
 
     # application:
     print(GREETING_MESSAGE)
 
+    is_authenticated = False
+    while not is_authenticated:
+        is_authenticated = Interactions.authentication()
 
-    while Interactions.authentication() is False:
-        Interactions.authentication() # decalage, il faut valider deux fois si on rate la premier identification
+    ManageDb.display_categories()
+
+    # TROUVER UN MOYEN QUE S'IL EST TAPé 0 RETOUR AUX CATéGORIES
+    # possible_to_change_category = False
+    # while not possible_to_change_category:
+    #     possible_to_change_category = Interactions.selection(NAMES_IN_FRENCH[0])
+    #     ManageDb.display_categories()
+
+    right_id_selected = False
+    while not right_id_selected:
+        right_id_selected = ManageDb.display_products()
+
+    res = input("Voulez vous chercher un produit similaire meilleur pour votre santé? (Y/N): ")
+    if res == "Y" or "y":
+        ManageDb.compare_products()
     else:
-        ManageDb.display_categories()
-        ManageDb.display_products()
+        input("Presser une touche pour quitter")
+        quit()
 
-    # print le nutriscore de ce produit est capitalise(nutriscore). voulez vous chercher un produit similaire plus sain?
-    # comparer successivement sous diférents critères en focntion du nutriscore de base jusqu'a trouver un nutriscore meilleur
+    # choix de stoquer ses resultat dans la bd, de faire une nouvelle recherche et de quiter
+
+
 
 if __name__ == '__main__':
     main()

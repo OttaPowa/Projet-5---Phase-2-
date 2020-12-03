@@ -14,9 +14,9 @@ class ManageDb:
     connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
     cursor = connexion.cursor()
 
-    SQL_CAT_INSERT = """INSERT INTO category (name,url) VALUES (%(name)s, %(url)s)"""
     list_of_prod_id = []
     prod_from_selected_cat = ()
+    current_product = []
 
     @classmethod
     def verify_prerequisite(cls):
@@ -80,7 +80,16 @@ class ManageDb:
                         CREATE TABLE product_category (
                             id_product int DEFAULT NULL,
                             id_category int DEFAULT NULL)
-                            ENGINE=InnoDB; 
+                            ENGINE=InnoDB;
+                        CREATE UNIQUE INDEX product_category_UI
+                            ON product_category (id_product, id_category);
+    
+                        CREATE UNIQUE INDEX product_brand_UI
+                            ON product_brand (id_product, id_brand);
+    
+                        CREATE UNIQUE INDEX product_store_UI
+                            ON product_store (id_product, id_store);    
+                        
                         """
 
         for result in cls.cursor.execute(DATA_BASE_SQL, multi=True):
@@ -111,24 +120,12 @@ class ManageDb:
         """
             select function in SQL
         """
-        #  a modifier!, codé en dur ne fonctione que pour une seule ou deux colones pas plus
-        """for i in range(len(what_to_select)):
-            j = i + 1"""
-        """
-        if what_to_select is tuple:
-            for x in enumerate(len(what_to_select)):
-                cls.cursor.execute(f"SELECT {what_to_select[0]},{what_to_select[1]} FROM {name_of_table}")"""
         cls.list_of_prod_id = []
 
-        sql_sentence = ""
+        fields = ", ".join(what_to_select)
 
-        try:
-            sql_sentence = f"SELECT {what_to_select} FROM {name_of_table}"
+        sql_sentence = f"SELECT {fields} FROM {name_of_table}"
 
-        except:
-            sql_sentence = f"SELECT {what_to_select[0]},{what_to_select[1]} FROM {name_of_table}"
-
-        print(sql_sentence)
         cls.cursor.execute(sql_sentence)
         rows = cls.cursor.fetchall()
         return rows
@@ -164,6 +161,11 @@ class ManageDb:
         """
             Préparation et insertion des données dans les bases (n-n)
         """
+
+        # tjs une erreur.. lorsque plusieur produut ont le même nom, par exmeple raviole du dauphiné a 166 et 169.
+        # le process s'effectue a 166 pour 166 et 169... mais recommence lorsue dans la liste des produit il arrive au 169
+        # car il fait a nouveau un select sur le nom raviole du dauphiné. on a donc deux fois els données
+
         cat_unfounded = []
 
         for product in instantiated_list:
@@ -173,15 +175,12 @@ class ManageDb:
             my_item_id = ()
 
             query_product_id = f'SELECT id FROM {name_of_table1} WHERE name = "{product.name}"'
-            print(query_product_id)
+
             cls.cursor.execute(query_product_id)
 
             for row in cls.cursor:
                 my_product_id = row
                 my_list_of_product_id.append(my_product_id)
-
-                print(my_product_id)
-
 
             for my_prod_id in my_list_of_product_id:
 
@@ -211,30 +210,24 @@ class ManageDb:
                     for item in item_list:
                         splited_and_striped_item.append(item.strip())
                 cleaned_list_of_items = list(set(splited_and_striped_item))
-                print(cleaned_list_of_items)
 
                 for item in cleaned_list_of_items: # cleaned list of stores, brands or categories
 
                     query_item_id = f'SELECT id FROM {name_of_table2} WHERE name = "{item}"'
-                    print(query_item_id)
                     cls.cursor.execute(query_item_id)
                     my_item_id = () # actualise la variable pour éviter d'injecter les catégories non trouvé par l'API qui étient remplacé par es données précede,tes
 
                     for line in cls.cursor:
                         my_item_id = line
-                        print(my_item_id)
 
                     try:
-                        query_insert = f"INSERT INTO {name_of_table3} ({column1}, {column2}) VALUES (%s, %s)"
-                        print(query_insert)
-                        print(my_prod_id[0], my_item_id[0])
+                        query_insert = f"INSERT IGNORE INTO {name_of_table3} ({column1}, {column2}) VALUES (%s, %s)"
                         cls.cursor.execute(query_insert, (my_prod_id[0], my_item_id[0]))
 
                     except IndexError:  # some indexerror occures when a name in another language is found (english or german mostly)
                         cat_unfounded.append(my_product_id)
                         continue
 
-            print(cat_unfounded)
         cls.connexion.commit()
 
     @classmethod
@@ -249,34 +242,37 @@ class ManageDb:
 
     @classmethod
     def display_products(cls):
+        list_of_id = []
+        cls.current_product = []
 
         print('\nVoici les produits faisant partis de cette catégorie:\n'
               'Vous pouvez retourner aux catégories en tapant 0\n')
 
         for my_product in cls.prod_from_selected_cat:  # display product name and id depending of the category id
             result = cls.select((COLUMN[4], COLUMN[0]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
+
+            for id in result:
+                list_of_id.append(id[0])
             cls.print_result(result)
 
         prod_nbr = Interactions.selection(NAMES_IN_FRENCH[1])
 
-        if prod_nbr == 0:
-            cls.display_categories()
-        else:
+        if prod_nbr in list_of_id:
             res = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {prod_nbr}")
 
             for my_product in res:  # display the name and the nutriscore of the selected product
+                cls.current_product.append(my_product)
                 print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}')
-
-        # EN TEST : condition pour ne pas pouvoir entrer un chiffre autre que ceux de la list_of_prod_id
-        list_of_id = []
-        for id in cls.list_of_prod_id:
-            list_of_id.append(id[0])
+            return True
+        else:
             print("Ce chiffre ne correspond pas  a un produit de la catégorie que vous avez choisis")
+            return False
 
 
     @classmethod
     def compare_products(cls):
-        my_nutriscore = cls.list_of_prod_id[4]
+
+        my_nutriscore = cls.current_product
 
         # recupérer la cat selectionner et les products pour effectuer la recherche (return? ou variable?)
         # mettre cat_nbr en cls pour utilser la catégorie pour effectuer les recherches de comparaison
@@ -285,9 +281,18 @@ class ManageDb:
         if my_nutriscore == "A" or "a":
             print('Vous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelquechose de '
                   'mieux!')
-        elif my_nutriscore == "B" or "b":
-            pass
-        elif my_nutriscore == "C" or "c":
-            pass
-        else:
-            pass
+            input("pressez une tocuhe pour quitter")
+            quit()
+        else:  #pas besoin de mettre b,c.. ce qu'on veut c'est le mieux donc si ce n'est pas le A on peut trouver mieux
+            try:
+                pass
+            except:
+                pass
+                # recuperer le nom du produit et sa catégorie. chercher s'il y a d'autre produits dans sa catégorie.
+                # si oui afficher celui au nutriscore le plus haut avec son nom et nutriscore.
+                # sinon chercher un nom de produit contenant le même mot et afficher son nom et nutriscore.
+
+                # enregistrer automatiquement le resultat final d'une comparaison pour l'user
+                # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit
+                # ou bien effectuer une nouvelle recherche ou quiter
+
