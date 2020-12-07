@@ -8,10 +8,10 @@ class Category:
                  args):
         """
             Constructor
-            :param arg1: name of the category
-            :type arg1: string
-            :param arg2: url of the category
-            :type arg2: string
+            :param args[0]: name of the category
+            :type args[0]: string
+            :param args[1]: url of the category
+            :type args[1]: string
         """
 
         self.name = args[0].replace("'", "''")

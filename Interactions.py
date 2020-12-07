@@ -4,6 +4,9 @@ from constants import*
 
 
 class Interactions:
+    """
+        this class manage the interactions with the user
+    """
 
     @staticmethod
     def authentication():
@@ -25,11 +28,11 @@ class Interactions:
 
         while stat:
             try:
-                numbr = int(input(f"\nTapez le numéro {name_of_search_field} que vous souhaitez explorer: "))
-                if numbr == 0:
+                number = int(input(f"\nTapez le numéro {name_of_search_field} que vous souhaitez explorer: "))
+                if number == 0:
                     return False
                 else:
-                    return numbr
+                    return number
             except ValueError:
                 print("\nentrez un nombre s'il vous plait!")
                 continue

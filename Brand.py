@@ -8,8 +8,8 @@ class Brand:
                  args):
         """
             Constructor
-            :param arg1: name of the product
-            :type arg1: string
+            :param args[0]: name of the product
+            :type args[0]: string
         """
 
         self.name = args[0]

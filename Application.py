@@ -21,17 +21,17 @@ def main():
 
     PrepareData.instantiate(DICT_OF_CLASSES["Product"], PrepareData.cleaned_products)
 
-    STORES = [store.store for store in Product.instantiated_products]
-    BRANDS = [brand.brand for brand in Product.instantiated_products]
-    CATEGORIES = [categories.category for categories in Product.instantiated_products]
+    stores = [store.store for store in Product.instantiated_products]
+    brands = [brand.brand for brand in Product.instantiated_products]
+    categories = [categories.category for categories in Product.instantiated_products]
 
-    PrepareData.split_and_set(STORES)
+    PrepareData.split_and_set(stores)
     PrepareData.instantiate(DICT_OF_CLASSES["Store"], PrepareData.setted_items)
 
-    PrepareData.split_and_set(BRANDS)
+    PrepareData.split_and_set(brands)
     PrepareData.instantiate(DICT_OF_CLASSES["Brand"], PrepareData.setted_items)
 
-    PrepareData.split_and_set(CATEGORIES)
+    PrepareData.split_and_set(categories)
     PrepareData.get_url(PrepareData.setted_items)
     PrepareData.instantiate(DICT_OF_CLASSES["Category"], PrepareData.cleaned_cat_with_url)
 
@@ -50,7 +50,6 @@ def main():
     ManageDb.insert_n_n(Product.instantiated_products, NAME_OF_TABLE[1], NAME_OF_TABLE[0],
                         NAME_OF_TABLE[6], COLUMN[8], COLUMN[5])
 
-
     # application:
     print(GREETING_MESSAGE)
 
@@ -60,7 +59,7 @@ def main():
 
     ManageDb.display_categories()
 
-    # TROUVER UN MOYEN QUE S'IL EST TAPé 0 RETOUR AUX CATéGORIES
+    # TROUVER UN MOYEN QUE S'IL EST TAPé 0 RETOUR AUX CATEGORIES
     # possible_to_change_category = False
     # while not possible_to_change_category:
     #     possible_to_change_category = Interactions.selection(NAMES_IN_FRENCH[0])
@@ -70,15 +69,14 @@ def main():
     while not right_id_selected:
         right_id_selected = ManageDb.display_products()
 
-    res = input("Voulez vous chercher un produit similaire meilleur pour votre santé? (Y/N): ")
+    res = input("Voulez-vous chercher un produit similaire meilleur pour votre santé? (Y/N): ")
     if res == "Y" or "y":
         ManageDb.compare_products()
     else:
         input("Presser une touche pour quitter")
         quit()
 
-    # choix de stoquer ses resultat dans la bd, de faire une nouvelle recherche et de quiter
-
+    # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 
 
 if __name__ == '__main__':

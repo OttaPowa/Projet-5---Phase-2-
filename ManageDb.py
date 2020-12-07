@@ -11,6 +11,7 @@ class ManageDb:
         This class manage the interactions with the database
     """
 
+    # class instances
     connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
     cursor = connexion.cursor()
 
@@ -27,11 +28,11 @@ class ManageDb:
     @classmethod
     def build(cls):
         """
-            build the MySQL database
+            build the MySQL tables
         """
         print("Contruction de la base de données...")
 
-        DATA_BASE_SQL = """
+        data_base_sql = """
                         DROP TABLE IF EXISTS category;
                         DROP TABLE IF EXISTS product;
                         DROP TABLE IF EXISTS store;
@@ -92,26 +93,28 @@ class ManageDb:
                         
                         """
 
-        for result in cls.cursor.execute(DATA_BASE_SQL, multi=True):
+        # apply multi true to execute sql actions in chain
+        for result in cls.cursor.execute(data_base_sql, multi=True):
             pass
 
         cls.connexion.commit()
         print("La base de données à été crée.")
 
     @classmethod
-    def delete(cls, name_of_table):
+    def delete(cls, what_to_drop, name_of):
         """
             delete database, table, line or column
         """
-        cls.cursor.execute(f"DROP TABLE {name_of_table}")
+        cls.cursor.execute(f"DROP {what_to_drop} {name_of}")
 
     @classmethod
     def show_tables(cls):
         """
-        update the database data...
-
+            show all tables of the database
         """
         cls.cursor.execute("SHOW TABLES")
+
+        # display tables in a readable way
         for lines in cls.cursor:
             print(lines)
 
@@ -120,30 +123,32 @@ class ManageDb:
         """
             select function in SQL
         """
-        cls.list_of_prod_id = []
+        cls.list_of_prod_id = []  # clean the class instance
 
-        fields = ", ".join(what_to_select)
+        fields = ", ".join(what_to_select)  # transform into a tuple
 
         sql_sentence = f"SELECT {fields} FROM {name_of_table}"
 
         cls.cursor.execute(sql_sentence)
-        rows = cls.cursor.fetchall()
-        return rows
+        results = cls.cursor.fetchall()
+        return results
 
     @classmethod
     def print_result(cls, results):
-
+        """
+            print the result of a SELECT
+        """
+        # loop on each rows, store the rows in a list and display them
         for items in results:
             cls.list_of_prod_id.append(items)
             print(items)
-
 
     @classmethod
     def fill(cls, insert_statement, list_of_items):
         """
             fill the database with the transformed API data
         """
-
+        # try to raise AttributeError to select the right syntax
         for item in list_of_items:
             try:
                 cls.cursor.execute(insert_statement, (item.name, item.url, item.picture_url, item.nutriscore))
@@ -159,72 +164,75 @@ class ManageDb:
     @classmethod
     def insert_n_n(cls, instantiated_list, name_of_table1, name_of_table2, name_of_table3, column1, column2):
         """
-            Préparation et insertion des données dans les bases (n-n)
+            Prepare and insert data in the n_n tables
         """
 
-        # tjs une erreur.. lorsque plusieur produut ont le même nom, par exmeple raviole du dauphiné a 166 et 169.
-        # le process s'effectue a 166 pour 166 et 169... mais recommence lorsue dans la liste des produit il arrive au 169
-        # car il fait a nouveau un select sur le nom raviole du dauphiné. on a donc deux fois els données
+        cat_unfounded = []  # categories not found in the french Api categories
 
-        cat_unfounded = []
-
+        # loop on the instantiated products
         for product in instantiated_list:
+            my_list_of_product_id = []  # renew the list in each lap
+            my_product_id = ()  # renew the product id in each lap
+            my_item_id = ()  # renew the item id in each lap
 
-            my_list_of_product_id = []
-            my_product_id = ()
-            my_item_id = ()
-
+            # select the id of the product where the name is "product.name"
             query_product_id = f'SELECT id FROM {name_of_table1} WHERE name = "{product.name}"'
-
             cls.cursor.execute(query_product_id)
 
+            # get the product id or ids
             for row in cls.cursor:
                 my_product_id = row
                 my_list_of_product_id.append(my_product_id)
 
+            # do the associations of item id with all the product id of the list
             for my_prod_id in my_list_of_product_id:
-
-                list_of_splited_items = []
+                list_of_split_items = []
 
                 if name_of_table2 == 'store':
-                    list_of_splited_stores = product.store.split(",")
-                    list_of_splited_items = list_of_splited_stores
+                    list_of_split_stores = product.store.split(",")
+                    list_of_split_items = list_of_split_stores
                 elif name_of_table2 == 'brand':
-                    list_of_splited_brands = product.brand.split(",")
-                    list_of_splited_items = list_of_splited_brands
+                    list_of_split_brands = product.brand.split(",")
+                    list_of_split_items = list_of_split_brands
                 elif name_of_table2 == 'category':
-                    list_of_splited_categories = product.category.split(",")
-                    list_of_splited_items = list_of_splited_categories
+                    list_of_split_categories = product.category.split(",")
+                    list_of_split_items = list_of_split_categories
                 else:
                     print("Erreur dans le nom de l'argument")
 
-                splited_items = []
-                splited_and_striped_item = []
+                split_items = []
+                split_and_striped_item = []
 
-                for my_length in range(len(list_of_splited_items)):
-                    for item in list_of_splited_items:
+                # clean the list of stores, brands or categories
+                for my_length in range(len(list_of_split_items)):
+                    for item in list_of_split_items:
                         temp = item.split(",")
-                        splited_items.append(temp)
+                        split_items.append(temp)
 
-                for item_list in splited_items:
+                # prepare the data to be set
+                for item_list in split_items:
                     for item in item_list:
-                        splited_and_striped_item.append(item.strip())
-                cleaned_list_of_items = list(set(splited_and_striped_item))
+                        split_and_striped_item.append(item.strip())
 
-                for item in cleaned_list_of_items: # cleaned list of stores, brands or categories
+                # delete the doubloons
+                cleaned_list_of_items = list(set(split_and_striped_item))
 
+                # select the id of the store, brand or category where the name is the "item" value
+                for item in cleaned_list_of_items:
                     query_item_id = f'SELECT id FROM {name_of_table2} WHERE name = "{item}"'
                     cls.cursor.execute(query_item_id)
-                    my_item_id = () # actualise la variable pour éviter d'injecter les catégories non trouvé par l'API qui étient remplacé par es données précede,tes
 
+                    # set the value of my_item_id
+                    my_item_id = ()
                     for line in cls.cursor:
                         my_item_id = line
 
+                    # some index error occurs when a name in another language is found (english or german mostly)
                     try:
                         query_insert = f"INSERT IGNORE INTO {name_of_table3} ({column1}, {column2}) VALUES (%s, %s)"
                         cls.cursor.execute(query_insert, (my_prod_id[0], my_item_id[0]))
 
-                    except IndexError:  # some indexerror occures when a name in another language is found (english or german mostly)
+                    except IndexError:
                         cat_unfounded.append(my_product_id)
                         continue
 
@@ -232,35 +240,51 @@ class ManageDb:
 
     @classmethod
     def display_categories(cls):
+        """
+            display the categories in screen and order them by name. Recover the number tipped by the user (category id)
+            and get the corresponding products id
+        """
 
+        # select the categories and display it ordered by name
         result = cls.select((COLUMN[4], COLUMN[0]), f'{NAME_OF_TABLE[0]} ORDER BY name')
         cls.print_result(result)
 
-        cat_nbr = Interactions.selection(NAMES_IN_FRENCH[0])
-        cls.prod_from_selected_cat = cls.select((COLUMN[8], COLUMN[5]), f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{cat_nbr}"')
+        # get the number tipped by the user
+        category_number = Interactions.selection(NAMES_IN_FRENCH[0])
 
+        # recover the products id of the selected category
+        cls.prod_from_selected_cat = cls.select((COLUMN[8], COLUMN[5]),
+                                                f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{category_number}"')
 
     @classmethod
     def display_products(cls):
+        """
+            display the products (names and ids) of the category chosen before
+        """
+
         list_of_id = []
         cls.current_product = []
 
         print('\nVoici les produits faisant partis de cette catégorie:\n'
               'Vous pouvez retourner aux catégories en tapant 0\n')
 
-        for my_product in cls.prod_from_selected_cat:  # display product name and id depending of the category id
+        # display product name and id depending of the category id
+        for my_product in cls.prod_from_selected_cat:
             result = cls.select((COLUMN[4], COLUMN[0]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
 
-            for id in result:
-                list_of_id.append(id[0])
+            # store the ids in a list so the list contains all the id product of the chosen category
+            for my_id in result:
+                list_of_id.append(my_id[0])
             cls.print_result(result)
 
-        prod_nbr = Interactions.selection(NAMES_IN_FRENCH[1])
+        product_number = Interactions.selection(NAMES_IN_FRENCH[1])
 
-        if prod_nbr in list_of_id:
-            res = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {prod_nbr}")
+        # verify that the id product tipped by the user is in list_of_id
+        if product_number in list_of_id:
+            second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {product_number}")
 
-            for my_product in res:  # display the name and the nutriscore of the selected product
+            # display the name and the nutriscore of the selected product
+            for my_product in second_result:
                 cls.current_product.append(my_product)
                 print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}')
             return True
@@ -268,31 +292,32 @@ class ManageDb:
             print("Ce chiffre ne correspond pas  a un produit de la catégorie que vous avez choisis")
             return False
 
-
     @classmethod
-    def compare_products(cls):
+    def compare_products(cls):  # EN TEST
 
         my_nutriscore = cls.current_product
 
         # recupérer la cat selectionner et les products pour effectuer la recherche (return? ou variable?)
-        # mettre cat_nbr en cls pour utilser la catégorie pour effectuer les recherches de comparaison
-        # faire pareil avec prod_nbr pour comparer a partir du nom de produit si aucun autre produit dans la cat selectionnée
+        # mettre cat_nbr en cls pour utiliser la catégorie pour effectuer les recherches de comparaison
+        # faire pareil avec prod_nbr pour comparer a partir du nom de produit si aucun autre produit dans
+        # la cat selectionnée
 
+        # pas besoin de mettre b,c.. ce qu'on veut c'est le mieux donc si ce n'est pas le A on peut trouver mieux
         if my_nutriscore == "A" or "a":
-            print('Vous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelquechose de '
+            print('Vous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
-            input("pressez une tocuhe pour quitter")
+            # gerer ca avec un return pour orienter vers quit ou retour aux cat
+            input("pressez une touche pour quitter")
             quit()
-        else:  #pas besoin de mettre b,c.. ce qu'on veut c'est le mieux donc si ce n'est pas le A on peut trouver mieux
+        else:
             try:
                 pass
             except:
                 pass
-                # recuperer le nom du produit et sa catégorie. chercher s'il y a d'autre produits dans sa catégorie.
+                # récuperer le nom du produit et sa catégorie. chercher s'il y a d'autre produits dans sa catégorie.
                 # si oui afficher celui au nutriscore le plus haut avec son nom et nutriscore.
                 # sinon chercher un nom de produit contenant le même mot et afficher son nom et nutriscore.
 
-                # enregistrer automatiquement le resultat final d'une comparaison pour l'user
+                # enregistrer automatiquement le résultat final d'une comparaison pour user
                 # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit
-                # ou bien effectuer une nouvelle recherche ou quiter
-
+                # ou bien effectuer une nouvelle recherche ou quitter

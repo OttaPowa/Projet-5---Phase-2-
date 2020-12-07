@@ -8,20 +8,20 @@ class Product:
                  args):
         """
             Constructor
-            :param arg1: name of the product
-            :type arg1: string
-            :param arg2: url of the product
-            :type arg2: string
-            :param arg3: url of the picture of the product
-            :type arg3: string
-            :param arg4: brand of the product
-            :type arg4: string
-            :param arg5: stores were the product can be bought
-            :type arg5: string
-            :param arg6: nutriscore of the product
-            :type arg6: string
-            :param arg7: categories of the product
-            :type arg7: string
+            :param args[0]: name of the product
+            :type args[0]: string
+            :param args[1]: url of the product
+            :type args[1]: string
+            :param args[2]: url of the picture of the product
+            :type args[2]: string
+            :param args[3]: brand of the product
+            :type args[3]: string
+            :param args[4]: stores were the product can be bought
+            :type args[4]: string
+            :param args[5]: nutriscore of the product
+            :type args[5]: string
+            :param args[6]: categories of the product
+            :type args[6]: string
         """
 
         self.name = args[0]

@@ -8,10 +8,10 @@ class User:
                  user_name,
                  password):
         """
-            :param: name of the user
-            :type: str
-            :param: password of the user
-            :type: str
+            :param: user_name: name of the user
+            :type: user_name: str
+            :param: password: password of the user
+            :type: password: str
         """
 
         self.user_name = user_name
