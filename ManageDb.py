@@ -259,14 +259,13 @@ class ManageDb:
     @classmethod
     def display_products(cls):
         """
-            display the products (names and ids) of the category chosen before
+            display the products names and ids of the category chosen before
         """
 
         list_of_id = []
         cls.current_product = []
 
-        print('\nVoici les produits faisant partis de cette catégorie:\n'
-              'Vous pouvez retourner aux catégories en tapant 0\n')
+        print('\nVoici les produits faisant partis de cette catégorie:\n')
 
         # display product name and id depending of the category id
         for my_product in cls.prod_from_selected_cat:
@@ -277,6 +276,7 @@ class ManageDb:
                 list_of_id.append(my_id[0])
             cls.print_result(result)
 
+        print("Vous pouvez retourner aux catégories en tapant 0")
         product_number = Interactions.selection(NAMES_IN_FRENCH[1])
 
         # verify that the id product tipped by the user is in list_of_id
@@ -286,11 +286,27 @@ class ManageDb:
             # display the name and the nutriscore of the selected product
             for my_product in second_result:
                 cls.current_product.append(my_product)
-                print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}')
+                print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}\n')
             return True
+        elif product_number == 0:
+            cls.display_categories()
         else:
             print("Ce chiffre ne correspond pas  a un produit de la catégorie que vous avez choisis")
             return False
+
+    @classmethod
+    def ready_to_compare(cls):
+        res = input("Voulez-vous chercher un produit similaire meilleur pour votre santé?\n"
+                    "(Y: oui), (N: retour aux catégories), (Q: quitter): ")
+
+        if res == "Y":
+            return True
+        elif res == "N":
+            cls.display_categories()
+
+        else:
+            input("Presser une touche pour quitter")
+            quit()
 
     @classmethod
     def compare_products(cls):  # EN TEST

@@ -16,6 +16,7 @@ class Interactions:
 
         if (user_name, password) == test:
             print("\nIdentification réussie\n")
+            input("tapez sur une touche pour continuer et afficher les catégories")
             return True
         else:
             print("Echec de l'identification")
@@ -37,7 +38,7 @@ class Interactions:
                 print("\nentrez un nombre s'il vous plait!")
                 continue
 
-    @staticmethod
+    @staticmethod  # pas utile pour le moment
     def quit_or_go_back():
 
         command = input()

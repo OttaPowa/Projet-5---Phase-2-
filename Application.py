@@ -59,22 +59,14 @@ def main():
 
     ManageDb.display_categories()
 
-    # TROUVER UN MOYEN QUE S'IL EST TAPé 0 RETOUR AUX CATEGORIES
-    # possible_to_change_category = False
-    # while not possible_to_change_category:
-    #     possible_to_change_category = Interactions.selection(NAMES_IN_FRENCH[0])
-    #     ManageDb.display_categories()
+    allowed_id_selected = False
+    while not allowed_id_selected:
+        allowed_id_selected = ManageDb.display_products()
 
-    right_id_selected = False
-    while not right_id_selected:
-        right_id_selected = ManageDb.display_products()
+    continue_process = False
+    while not continue_process:
+        ManageDb.ready_to_compare()
 
-    res = input("Voulez-vous chercher un produit similaire meilleur pour votre santé? (Y/N): ")
-    if res == "Y" or "y":
-        ManageDb.compare_products()
-    else:
-        input("Presser une touche pour quitter")
-        quit()
 
     # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 
