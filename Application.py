@@ -11,6 +11,9 @@ from Interactions import Interactions
 
 
 def main():
+    # connexion and prerequisites:
+    ManageDb.verify_prerequisite()
+    ManageDb.mysql_connection()
 
     # get and clean the data:
     PrepareData.get_categories()
@@ -57,16 +60,20 @@ def main():
     while not is_authenticated:
         is_authenticated = Interactions.authentication()
 
-    ManageDb.display_categories()
+    back_to_categories = False
+    while not back_to_categories:
+        back_to_categories = ManageDb.display_categories()
+        # surement mal gèré pour la boucle (pas de valeur à display_cat)
 
-    allowed_id_selected = False
-    while not allowed_id_selected:
-        allowed_id_selected = ManageDb.display_products()
+        allowed_id_selected = False
+        while not allowed_id_selected:
+            allowed_id_selected = ManageDb.display_products()
 
-    continue_process = False
-    while not continue_process:
-        ManageDb.ready_to_compare()
-
+            allowed_choice = False
+            while not allowed_choice:
+                allowed_choice = ManageDb.ready_to_compare()
+                # retour un cat ok mais NON FOCNTIONNEL ( focntionne la première fois aps la deuxième)
+            ManageDb.compare_products()
 
     # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 

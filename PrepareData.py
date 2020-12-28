@@ -38,7 +38,6 @@ class PrepareData:
         # loop on the categories to get those that contains only the number of product defined in the min/max_product
         for categories in cls.result["tags"]:
             if min_product <= categories["products"] <= max_product:
-                print(f'Récupération de la catégorie {categories["name"]}')
                 cleaned_categories.append((categories["name"], categories["url"]))
 
         # set the local list to class instance
@@ -87,9 +86,7 @@ class PrepareData:
             position_in_cat_list += 1  # increment the counter the get the url
 
         # print the number of products got in the current category (the name of the category is the argument 0)
-        for i in uncleaned_products:
-            print(f'{len(i)} produits ont été récupérés dans la catégorie {cls.cleaned_categories[cat_nbr][0]}')
-
+        for each in uncleaned_products:
             # increment the counter of categories
             cat_nbr += 1
 

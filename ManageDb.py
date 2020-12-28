@@ -12,18 +12,41 @@ class ManageDb:
     """
 
     # class instances
-    connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
-    cursor = connexion.cursor()
+    connexion = ""
+    cursor = ""
 
     list_of_prod_id = []
+
     prod_from_selected_cat = ()
     current_product = []
+    list_of_id = []
+    id_name_and_nutriscore_list = []
 
     @classmethod
     def verify_prerequisite(cls):
         """
             verify if MySQL is installed on the client computer. if not print a message with à link to DL it.
         """
+
+        print("\nBonjour, MySQL est nécéssaire pour faire fonctionner l'application."
+              "Vous pouvez l'installer en suivant ce lien: https://dev.mysql.com/downloads/mysql/#downloads\n")
+
+        user_input = input("Si vous possèdez un compte tapez 'Y' sinon tapez n'importe quelle autre touche: ")
+
+        if user_input == "Y":
+            pass
+        else:
+            quit()
+
+    @classmethod
+    def mysql_connection(cls):
+
+        user_name = input("MySql user name: ")
+        password = input("Mysql password: ")
+
+        cls.connexion = mysql.connector.connect(user=user_name, password=password, database="projet5")
+        cls.cursor = cls.connexion.cursor()
+
 
     @classmethod
     def build(cls):
@@ -101,11 +124,11 @@ class ManageDb:
         print("La base de données à été crée.")
 
     @classmethod
-    def delete(cls, what_to_drop, name_of):
+    def delete(cls, what_to_drop, name):
         """
             delete database, table, line or column
         """
-        cls.cursor.execute(f"DROP {what_to_drop} {name_of}")
+        cls.cursor.execute(f"DROP {what_to_drop} {name}")
 
     @classmethod
     def show_tables(cls):
@@ -276,9 +299,10 @@ class ManageDb:
                 list_of_id.append(my_id[0])
             cls.print_result(result)
 
-        print("Vous pouvez retourner aux catégories en tapant 0")
+        print("\nVous pouvez retourner aux catégories en tapant 0")
         product_number = Interactions.selection(NAMES_IN_FRENCH[1])
 
+        cls.list_of_id = list_of_id
         # verify that the id product tipped by the user is in list_of_id
         if product_number in list_of_id:
             second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {product_number}")
@@ -288,10 +312,11 @@ class ManageDb:
                 cls.current_product.append(my_product)
                 print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}\n')
             return True
+
         elif product_number == 0:
             cls.display_categories()
         else:
-            print("Ce chiffre ne correspond pas  a un produit de la catégorie que vous avez choisis")
+            print("Ce chiffre ne correspond pas a un produit de la catégorie que vous avez choisis")
             return False
 
     @classmethod
@@ -302,37 +327,53 @@ class ManageDb:
         if res == "Y":
             return True
         elif res == "N":
-            cls.display_categories()
-
-        else:
-            input("Presser une touche pour quitter")
+            # cls.display_categories() affiche une fois les cat pour rien.
+            return True
+        elif res == "Q":
+            print("Au revoir!")
             quit()
+        else:
+            input("Erreur! Touche non valide!")
+            return False
 
     @classmethod
     def compare_products(cls):  # EN TEST
 
-        my_nutriscore = cls.current_product
+        cls.id_name_and_nutriscore_list = []
+        my_nutriscore = cls.current_product[0][4].capitalize()
 
         # recupérer la cat selectionner et les products pour effectuer la recherche (return? ou variable?)
         # mettre cat_nbr en cls pour utiliser la catégorie pour effectuer les recherches de comparaison
         # faire pareil avec prod_nbr pour comparer a partir du nom de produit si aucun autre produit dans
         # la cat selectionnée
 
-        # pas besoin de mettre b,c.. ce qu'on veut c'est le mieux donc si ce n'est pas le A on peut trouver mieux
-        if my_nutriscore == "A" or "a":
-            print('Vous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
+        if my_nutriscore == "A":
+            print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
-            # gerer ca avec un return pour orienter vers quit ou retour aux cat
-            input("pressez une touche pour quitter")
-            quit()
+            # demander de retourner aux catégories ou aux produits
+            user_choice = input("\n(N: retour aux catégories), (Q: quitter): ")
+            if user_choice == "Q":
+                quit()
+            if user_choice == "N":
+                pass
+                # retour aux catégories
+
         else:
-            try:
-                pass
-            except:
-                pass
-                # récuperer le nom du produit et sa catégorie. chercher s'il y a d'autre produits dans sa catégorie.
-                # si oui afficher celui au nutriscore le plus haut avec son nom et nutriscore.
-                # sinon chercher un nom de produit contenant le même mot et afficher son nom et nutriscore.
+            for my_product in cls.prod_from_selected_cat:
+                result = cls.select((COLUMN[4], COLUMN[0], COLUMN[3]),
+                                    f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
+                cls.id_name_and_nutriscore_list.append(result)
+
+            for item in cls.id_name_and_nutriscore_list:
+                if item[0][2] == "a":
+                    print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
+                          f"Nutriscore de {item[0][2].capitalize()}")
+                    input("Tapez une touche pour afficher une autre proposition")
+                else:
+                    print("nous n'avons pas trouvés de résultat satisfaisant dans la catégorie")
+
+                    # chercher dans une des autres catégories du produit
+                    # chercher par mot clé similaire
 
                 # enregistrer automatiquement le résultat final d'une comparaison pour user
                 # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit
