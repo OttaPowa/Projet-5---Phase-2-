@@ -12,8 +12,12 @@ class ManageDb:
     """
 
     # class instances
-    connexion = ""
-    cursor = ""
+    #connexion = ""  # methode definitive
+    #cursor = ""
+
+    # methode rapide pour test
+    connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
+    cursor = connexion.cursor()
 
     list_of_prod_id = []
 
@@ -29,7 +33,7 @@ class ManageDb:
         """
 
         print("\nBonjour, MySQL est nécéssaire pour faire fonctionner l'application."
-              "Vous pouvez l'installer en suivant ce lien: https://dev.mysql.com/downloads/mysql/#downloads\n")
+              "\nVous pouvez l'installer en suivant ce lien: https://dev.mysql.com/downloads/mysql/#downloads\n")
 
         user_input = input("Si vous possèdez un compte tapez 'Y' sinon tapez n'importe quelle autre touche: ")
 
@@ -44,8 +48,13 @@ class ManageDb:
         user_name = input("MySql user name: ")
         password = input("Mysql password: ")
 
-        cls.connexion = mysql.connector.connect(user=user_name, password=password, database="projet5")
-        cls.cursor = cls.connexion.cursor()
+        try:
+            cls.connexion = mysql.connector.connect(user=user_name, password=password, database="projet5")
+            cls.cursor = cls.connexion.cursor()
+            return True
+        except mysql.connector.errors.ProgrammingError:
+            print("\nEchec de l'authentification auprès de MySql")
+            return False
 
 
     @classmethod
@@ -280,7 +289,7 @@ class ManageDb:
                                                 f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{category_number}"')
 
     @classmethod
-    def display_products(cls):
+    def display_products(cls, list_of_products):
         """
             display the products names and ids of the category chosen before
         """
@@ -291,15 +300,14 @@ class ManageDb:
         print('\nVoici les produits faisant partis de cette catégorie:\n')
 
         # display product name and id depending of the category id
-        for my_product in cls.prod_from_selected_cat:
+        for my_product in list_of_products:
             result = cls.select((COLUMN[4], COLUMN[0]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
 
             # store the ids in a list so the list contains all the id product of the chosen category
             for my_id in result:
                 list_of_id.append(my_id[0])
             cls.print_result(result)
-
-        print("\nVous pouvez retourner aux catégories en tapant 0")
+        # il ya vait ici print("vous pouvez retiurner ux cat en tappant 0")
         product_number = Interactions.selection(NAMES_IN_FRENCH[1])
 
         cls.list_of_id = list_of_id
@@ -312,9 +320,7 @@ class ManageDb:
                 cls.current_product.append(my_product)
                 print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}\n')
             return True
-
-        elif product_number == 0:
-            cls.display_categories()
+            # il y avait ici un elif pord numbr = 0: cls.display_cat
         else:
             print("Ce chiffre ne correspond pas a un produit de la catégorie que vous avez choisis")
             return False
@@ -327,7 +333,6 @@ class ManageDb:
         if res == "Y":
             return True
         elif res == "N":
-            # cls.display_categories() affiche une fois les cat pour rien.
             return True
         elif res == "Q":
             print("Au revoir!")
@@ -337,26 +342,21 @@ class ManageDb:
             return False
 
     @classmethod
-    def compare_products(cls):  # EN TEST
+    def compare_product_in_current_category(cls):
 
         cls.id_name_and_nutriscore_list = []
         my_nutriscore = cls.current_product[0][4].capitalize()
 
-        # recupérer la cat selectionner et les products pour effectuer la recherche (return? ou variable?)
-        # mettre cat_nbr en cls pour utiliser la catégorie pour effectuer les recherches de comparaison
-        # faire pareil avec prod_nbr pour comparer a partir du nom de produit si aucun autre produit dans
-        # la cat selectionnée
-
         if my_nutriscore == "A":
             print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
-            # demander de retourner aux catégories ou aux produits
             user_choice = input("\n(N: retour aux catégories), (Q: quitter): ")
             if user_choice == "Q":
                 quit()
             if user_choice == "N":
                 pass
-                # retour aux catégories
+                cls.display_categories()
+                # NON FONCTIONNEL (ne reviens pas au debut affiche les cat et se stop une fois la cat selectionnée)
 
         else:
             for my_product in cls.prod_from_selected_cat:
@@ -371,9 +371,38 @@ class ManageDb:
                     input("Tapez une touche pour afficher une autre proposition")
                 else:
                     print("nous n'avons pas trouvés de résultat satisfaisant dans la catégorie")
+                    cls.compare_product_in_affiliated_categories()
 
-                    # chercher dans une des autres catégories du produit
-                    # chercher par mot clé similaire
+    @classmethod
+    def compare_product_in_affiliated_categories(cls):  # EN TEST
+        # get the products in affiliated categories of the chosen product
+
+        my_id = cls.current_product[0][0]
+
+        print("\nNous allons maintenant rechercher un produit dans les catégories affiliées au produit")
+
+        # search the categories belonging to the product
+        prod_and_cat_ids = cls.select((COLUMN[5], COLUMN[8]), f"{NAME_OF_TABLE[6]} WHERE {COLUMN[8]} = {my_id}")
+
+        # clean to keep only the ids of the categories
+        affiliated_categories_id = [cat_id[0] for cat_id in prod_and_cat_ids]
+
+        for my_cat_id in affiliated_categories_id:
+            prod_from_affiliated_cat = cls.select((COLUMN[8], COLUMN[5]),
+                                                  f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{my_cat_id}"')
+            print(prod_from_affiliated_cat)
+            cls.display_products(prod_from_affiliated_cat)
+            # essayer de n'afficher que ceux avec un  nutrisocre de A ?
+            # abandonner cette methode et tester la recherhce nominative? combiner les deux?
+            input("tapez une touche pour continuer")
+
+            # fonctionne bien mais necessite de déplacer le choix de selction du numéro produit dans une methode dédié
+            # sinon on est obligé de choisir un produit pour pouvoir ensuite passer a la suite de la boucle
+
+    @classmethod
+    def search_with_name(cls):
+        # chercher par mot clé similaire
+        pass
 
                 # enregistrer automatiquement le résultat final d'une comparaison pour user
                 # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit

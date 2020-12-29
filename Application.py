@@ -12,8 +12,10 @@ from Interactions import Interactions
 
 def main():
     # connexion and prerequisites:
-    ManageDb.verify_prerequisite()
-    ManageDb.mysql_connection()
+    #ManageDb.verify_prerequisite()
+    #authenticated = False
+    #while not authenticated:
+        #authenticated = ManageDb.mysql_connection()
 
     # get and clean the data:
     PrepareData.get_categories()
@@ -67,13 +69,18 @@ def main():
 
         allowed_id_selected = False
         while not allowed_id_selected:
-            allowed_id_selected = ManageDb.display_products()
+            allowed_id_selected = ManageDb.display_products(ManageDb.prod_from_selected_cat)
 
             allowed_choice = False
             while not allowed_choice:
                 allowed_choice = ManageDb.ready_to_compare()
                 # retour un cat ok mais NON FOCNTIONNEL ( focntionne la première fois aps la deuxième)
-            ManageDb.compare_products()
+            ManageDb.compare_product_in_current_category()
+            #user_choice = input("rechercher dans les autres catégories affiliées au produits? 'Y' 'N': ")
+            #if user_choice == "Y":
+            ManageDb.compare_product_in_affiliated_categories()
+            #else:
+                #quit()
 
     # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 
