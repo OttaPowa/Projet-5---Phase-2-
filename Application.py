@@ -7,7 +7,6 @@ from Category import Category
 from Product import Product
 from Brand import Brand
 from Store import Store
-from Interactions import Interactions
 
 
 def main():
@@ -60,27 +59,47 @@ def main():
 
     is_authenticated = False
     while not is_authenticated:
-        is_authenticated = Interactions.authentication()
+        is_authenticated = ManageDb.authentication()
 
-    back_to_categories = False
-    while not back_to_categories:
-        back_to_categories = ManageDb.display_categories()
-        # surement mal gèré pour la boucle (pas de valeur à display_cat)
+    while ManageDb.action != "Q":
+        ManageDb.action = ManageDb.selection()
 
-        allowed_id_selected = False
-        while not allowed_id_selected:
-            allowed_id_selected = ManageDb.display_products(ManageDb.prod_from_selected_cat)
+        if ManageDb.action == "C":
+            ManageDb.glob = "display cat"
+            ManageDb.display_categories()
 
-            allowed_choice = False
-            while not allowed_choice:
-                allowed_choice = ManageDb.ready_to_compare()
-                # retour un cat ok mais NON FOCNTIONNEL ( focntionne la première fois aps la deuxième)
-            ManageDb.compare_product_in_current_category()
-            #user_choice = input("rechercher dans les autres catégories affiliées au produits? 'Y' 'N': ")
-            #if user_choice == "Y":
-            ManageDb.compare_product_in_affiliated_categories()
-            #else:
-                #quit()
+        elif ManageDb.action.isdigit():
+            if ManageDb.glob == "display cat":
+                ManageDb.get_products_from_selected_category()
+                ManageDb.display_products(ManageDb.prod_from_selected_cat)
+                ManageDb.glob = "display prod"
+            elif ManageDb.glob == "display prod":
+                ManageDb.display_nutriscore()
+                ManageDb.glob = "compare prod"
+            elif ManageDb.glob == "compare prod" and ManageDb.action == "999":
+                ManageDb.compare_product_in_current_category()
+                ManageDb.glob = "alternative compare"
+            elif ManageDb.glob == "alternative compare" and ManageDb.action == "666":
+                ManageDb.compare_product_in_affiliated_categories()
+
+        elif ManageDb.action != "Q":
+            pass
+
+    quit()
+
+
+
+    # allowed_id_selected = False
+    # while not allowed_id_selected:
+    #     allowed_id_selected = ManageDb.display_products(ManageDb.prod_from_selected_cat)
+    #
+    #     allowed_choice = False
+    #     while not allowed_choice:
+    #         allowed_choice = ManageDb.ready_to_compare()
+    #
+    #     ManageDb.compare_product_in_current_category()
+    #
+    #     ManageDb.compare_product_in_affiliated_categories()
 
     # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 

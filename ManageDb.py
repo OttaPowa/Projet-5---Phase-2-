@@ -3,7 +3,6 @@
 import mysql.connector
 
 from constants import*
-from Interactions import Interactions
 
 
 class ManageDb:
@@ -25,6 +24,8 @@ class ManageDb:
     current_product = []
     list_of_id = []
     id_name_and_nutriscore_list = []
+    glob = ""
+    action = ""
 
     @classmethod
     def verify_prerequisite(cls):
@@ -56,6 +57,21 @@ class ManageDb:
             print("\nEchec de l'authentification auprès de MySql")
             return False
 
+    @staticmethod
+    def authentication():
+        """
+            authentication of the user with they logs
+        """
+
+        user_name = input("Tapez votre nom d'utilisateur: ")
+        password = input("Tapez votre mot de passe: ")
+
+        if (user_name, password) == test:
+            print("\nIdentification réussie")
+            return True
+        else:
+            print("Echec de l'identification")
+            return False
 
     @classmethod
     def build(cls):
@@ -173,7 +189,13 @@ class ManageDb:
         # loop on each rows, store the rows in a list and display them
         for items in results:
             cls.list_of_prod_id.append(items)
-            print(items)
+            result_string = f"{str(items[0]).rjust(6, ' ')} - "
+            for index, item in enumerate(items):
+                if index == 1:
+                    result_string += f"{str(item).capitalize()}"
+                elif index > 1:
+                    result_string += f", {item}"
+            print(result_string)
 
     @classmethod
     def fill(cls, insert_statement, list_of_items):
@@ -273,20 +295,19 @@ class ManageDb:
     @classmethod
     def display_categories(cls):
         """
-            display the categories in screen and order them by name. Recover the number tipped by the user (category id)
-            and get the corresponding products id
+            display the categories in screen and order them by name.
         """
 
-        # select the categories and display it ordered by name
         result = cls.select((COLUMN[4], COLUMN[0]), f'{NAME_OF_TABLE[0]} ORDER BY name')
         cls.print_result(result)
 
-        # get the number tipped by the user
-        category_number = Interactions.selection(NAMES_IN_FRENCH[0])
-
-        # recover the products id of the selected category
+    @classmethod
+    def get_products_from_selected_category(cls):
+        """
+            get the products id of the selected category
+        """
         cls.prod_from_selected_cat = cls.select((COLUMN[8], COLUMN[5]),
-                                                f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{category_number}"')
+                                                f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{cls.action}"')
 
     @classmethod
     def display_products(cls, list_of_products):
@@ -296,8 +317,10 @@ class ManageDb:
 
         list_of_id = []
         cls.current_product = []
+        print(list_of_products)
 
-        print('\nVoici les produits faisant partis de cette catégorie:\n')
+        cat_name = cls.select((COLUMN[0],), f"{NAME_OF_TABLE[0]} WHERE {COLUMN[4]} = {list_of_products[0][1]}")
+        print(f"\nVoici les produits faisant partis de la catégorie {cat_name[0][0].replace(',','')}:\n")
 
         # display product name and id depending of the category id
         for my_product in list_of_products:
@@ -307,42 +330,31 @@ class ManageDb:
             for my_id in result:
                 list_of_id.append(my_id[0])
             cls.print_result(result)
-        # il ya vait ici print("vous pouvez retiurner ux cat en tappant 0")
-        product_number = Interactions.selection(NAMES_IN_FRENCH[1])
 
         cls.list_of_id = list_of_id
+
+    @classmethod
+    def display_nutriscore(cls):
+        """
+            display the nutriscore of the chosen product
+        """
+
         # verify that the id product tipped by the user is in list_of_id
-        if product_number in list_of_id:
-            second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {product_number}")
+        if int(cls.action) in cls.list_of_id:
+            second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {cls.action}")
 
             # display the name and the nutriscore of the selected product
             for my_product in second_result:
                 cls.current_product.append(my_product)
-                print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}\n')
-            return True
-            # il y avait ici un elif pord numbr = 0: cls.display_cat
+                print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}')
         else:
             print("Ce chiffre ne correspond pas a un produit de la catégorie que vous avez choisis")
-            return False
-
-    @classmethod
-    def ready_to_compare(cls):
-        res = input("Voulez-vous chercher un produit similaire meilleur pour votre santé?\n"
-                    "(Y: oui), (N: retour aux catégories), (Q: quitter): ")
-
-        if res == "Y":
-            return True
-        elif res == "N":
-            return True
-        elif res == "Q":
-            print("Au revoir!")
-            quit()
-        else:
-            input("Erreur! Touche non valide!")
-            return False
 
     @classmethod
     def compare_product_in_current_category(cls):
+        """
+            compare the product with others from his category, display those that have a nutriscore of A
+        """
 
         cls.id_name_and_nutriscore_list = []
         my_nutriscore = cls.current_product[0][4].capitalize()
@@ -350,13 +362,6 @@ class ManageDb:
         if my_nutriscore == "A":
             print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
-            user_choice = input("\n(N: retour aux catégories), (Q: quitter): ")
-            if user_choice == "Q":
-                quit()
-            if user_choice == "N":
-                pass
-                cls.display_categories()
-                # NON FONCTIONNEL (ne reviens pas au debut affiche les cat et se stop une fois la cat selectionnée)
 
         else:
             for my_product in cls.prod_from_selected_cat:
@@ -370,12 +375,13 @@ class ManageDb:
                           f"Nutriscore de {item[0][2].capitalize()}")
                     input("Tapez une touche pour afficher une autre proposition")
                 else:
-                    print("nous n'avons pas trouvés de résultat satisfaisant dans la catégorie")
-                    cls.compare_product_in_affiliated_categories()
+                    pass
 
     @classmethod
-    def compare_product_in_affiliated_categories(cls):  # EN TEST
-        # get the products in affiliated categories of the chosen product
+    def compare_product_in_affiliated_categories(cls):
+        """
+            get and display the products with a nutriscore of A in affiliated categories of the chosen product
+        """
 
         my_id = cls.current_product[0][0]
 
@@ -390,20 +396,37 @@ class ManageDb:
         for my_cat_id in affiliated_categories_id:
             prod_from_affiliated_cat = cls.select((COLUMN[8], COLUMN[5]),
                                                   f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{my_cat_id}"')
-            print(prod_from_affiliated_cat)
             cls.display_products(prod_from_affiliated_cat)
-            # essayer de n'afficher que ceux avec un  nutrisocre de A ?
-            # abandonner cette methode et tester la recherhce nominative? combiner les deux?
             input("tapez une touche pour continuer")
 
-            # fonctionne bien mais necessite de déplacer le choix de selction du numéro produit dans une methode dédié
-            # sinon on est obligé de choisir un produit pour pouvoir ensuite passer a la suite de la boucle
 
     @classmethod
-    def search_with_name(cls):
-        # chercher par mot clé similaire
-        pass
+    def selection(cls):
+        """
+            method that manage the user inputs
+        """
 
-                # enregistrer automatiquement le résultat final d'une comparaison pour user
-                # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit
-                # ou bien effectuer une nouvelle recherche ou quitter
+        value = ""
+
+        if cls.glob == "":
+            value = "Tapez (C) pour afficher les catégories: "
+        elif cls.glob == "display cat":
+            value = " Tapez le numéro de la catégorie que vous souhaitez explorer vous pouvez quitter en tapant (Q): "
+        elif cls.glob == "display prod":
+            value = "Tapez le numéro du produit que vous souhaitez explorer " \
+                    "vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
+        elif cls.glob == "display nutriscore":
+            value = "afficher le nutriscore ?"
+        elif cls.glob == "compare prod":
+            value = "Voulez-vous chercher un produit similaire meilleur pour votre santé?\n" \
+                    "(999: oui), (C: retour aux catégories), (Q: quitter): "
+        elif cls.glob == "alternative compare":
+            value = "Voulez vous chercher un produit plus sain dans les autres catégories affiliées au produit?\n" \
+                    "(666: oui), (C: retour aux catégories), (Q: quitter): "
+
+        number = input(f"\n{value}")
+        return number
+
+    # enregistrer automatiquement le résultat final d'une comparaison pour user
+    # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit
+    # ou bien effectuer une nouvelle recherche ou quitter

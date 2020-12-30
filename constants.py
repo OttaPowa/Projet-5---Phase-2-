@@ -20,5 +20,4 @@ DICT_OF_CLASSES = {'Store': Store.Store, 'Brand': Brand.Brand, 'Product': Produc
 GREETING_MESSAGE = "\nCette application vous permet de rechercher un produit pour lequel vous souhaitez trouver " \
                    "un équivalent plus sain.\nNaviguez a travers les catégories pour trouver le produit que vous " \
                    "désirez.\n"
-
 test = ("f", "t")
