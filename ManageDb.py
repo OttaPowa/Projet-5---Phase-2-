@@ -189,12 +189,12 @@ class ManageDb:
         # loop on each rows, store the rows in a list and display them
         for items in results:
             cls.list_of_prod_id.append(items)
-            result_string = f"{str(items[0]).rjust(6, ' ')} - "
+            result_string = f"{str(items[0]).rjust(6, ' ').capitalize()}"
             for index, item in enumerate(items):
                 if index == 1:
-                    result_string += f"{str(item).capitalize()}"
+                    result_string += f" - {str(item).capitalize()}"
                 elif index > 1:
-                    result_string += f", {item}"
+                    result_string += f" - {str(item).capitalize()}"
             print(result_string)
 
     @classmethod
@@ -317,14 +317,13 @@ class ManageDb:
 
         list_of_id = []
         cls.current_product = []
-        print(list_of_products)
 
         cat_name = cls.select((COLUMN[0],), f"{NAME_OF_TABLE[0]} WHERE {COLUMN[4]} = {list_of_products[0][1]}")
-        print(f"\nVoici les produits faisant partis de la catégorie {cat_name[0][0].replace(',','')}:\n")
+        print(f"\nVoici les produits faisant partis de la catégorie {cat_name[0][0].replace(',','').capitalize()}:\n")
 
         # display product name and id depending of the category id
         for my_product in list_of_products:
-            result = cls.select((COLUMN[4], COLUMN[0]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
+            result = cls.select((COLUMN[4], COLUMN[0], COLUMN[3]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
 
             # store the ids in a list so the list contains all the id product of the chosen category
             for my_id in result:
@@ -334,14 +333,14 @@ class ManageDb:
         cls.list_of_id = list_of_id
 
     @classmethod
-    def display_nutriscore(cls):
+    def display_nutriscore(cls, user_action):
         """
             display the nutriscore of the chosen product
         """
 
         # verify that the id product tipped by the user is in list_of_id
-        if int(cls.action) in cls.list_of_id:
-            second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {cls.action}")
+        if int(user_action) in cls.list_of_id:
+            second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {user_action}")
 
             # display the name and the nutriscore of the selected product
             for my_product in second_result:
@@ -373,9 +372,19 @@ class ManageDb:
                 if item[0][2] == "a":
                     print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
                           f"Nutriscore de {item[0][2].capitalize()}")
-                    input("Tapez une touche pour afficher une autre proposition")
+                    cls.ask_to_save_result()
+
+                elif item[0][2] == "b" and (my_nutriscore != "a" and my_nutriscore != "b"):
+                    print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
+                          f"Nutriscore de {item[0][2].capitalize()}")
+                    cls.ask_to_save_result()
+
                 else:
                     pass
+            print("\nIl n'y a pas (ou plus) de produit au nutriscore satisfaisant dans cette catégorie.")
+
+
+
 
     @classmethod
     def compare_product_in_affiliated_categories(cls):
@@ -393,12 +402,65 @@ class ManageDb:
         # clean to keep only the ids of the categories
         affiliated_categories_id = [cat_id[0] for cat_id in prod_and_cat_ids]
 
+        # display product in each affiliated categories
         for my_cat_id in affiliated_categories_id:
             prod_from_affiliated_cat = cls.select((COLUMN[8], COLUMN[5]),
                                                   f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{my_cat_id}"')
-            cls.display_products(prod_from_affiliated_cat)
-            input("tapez une touche pour continuer")
 
+            cls.display_products(prod_from_affiliated_cat)
+
+            choose_prod = input("\nVoulez vous explorer un produit de cette liste?\n"
+                                "(Oui: tapez le numéro du produit), (Entrée: Continuer vers une autre catégorie)"
+                                ", (Q: Quitter): ")
+
+            if choose_prod.isdigit():
+                cls.display_nutriscore(choose_prod)
+                break
+            elif choose_prod == "Q":
+                quit()
+            else:
+                pass
+
+    @classmethod
+    def show_final_product_details(cls):
+
+        product_details = cls.select((COLUMN[9]), f'{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {cls.action}')
+        print(f"\nVous trouverez une fiche détaillée sur {product_details[0][1].capitalize()} en suivant le liens:\n"
+              f"{product_details[0][2]}")
+
+        stores_id = cls.select((COLUMN[6],), f'{NAME_OF_TABLE[4]} WHERE {COLUMN[8]} = {product_details[0][0]}')
+
+        print("\nLa/les boutiques ou vous trouverez ce produit sont:")
+        for my_store_id in stores_id:
+            stores_details = cls.select((COLUMN[0],), f'{NAME_OF_TABLE[2]} WHERE {COLUMN[4]} = {my_store_id[0]}')
+            cls.print_result(stores_details)
+
+        print("\nla/les marques qui vendent ce produit sont:")
+        brands_id = cls.select((COLUMN[7],), f'{NAME_OF_TABLE[5]} WHERE {COLUMN[8]} = {product_details[0][0]}')
+        for my_brand_id in brands_id:
+            brands_details = cls.select((COLUMN[0],), f'{NAME_OF_TABLE[3]} WHERE {COLUMN[4]} = {my_brand_id[0]}')
+            cls.print_result(brands_details)
+
+    @classmethod
+    def ask_to_save_result(cls):
+
+        if cls.glob != "save search":
+
+            choice = input("Voulez vous enregister ce résultat de recherche?\n"
+                           "(555: oui), (Entrée: afficher le prochain produit)")
+            if choice == "555":
+                cls.save_search()
+
+            else:
+                pass
+        else:
+            cls.save_search()
+
+    @classmethod
+    def save_search(cls):
+        print("Sauvegarde de votre recherche")
+        "quit()"  # ou demander comme d'hab de quitter ou revenir aux cat
+        pass
 
     @classmethod
     def selection(cls):
@@ -409,20 +471,24 @@ class ManageDb:
         value = ""
 
         if cls.glob == "":
-            value = "Tapez (C) pour afficher les catégories: "
+            value = " Tapez (C) pour afficher les catégories: "
         elif cls.glob == "display cat":
             value = " Tapez le numéro de la catégorie que vous souhaitez explorer vous pouvez quitter en tapant (Q): "
         elif cls.glob == "display prod":
-            value = "Tapez le numéro du produit que vous souhaitez explorer " \
-                    "vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
-        elif cls.glob == "display nutriscore":
-            value = "afficher le nutriscore ?"
+            value = " Tapez le numéro du produit que vous souhaitez explorer\n" \
+                    " vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
         elif cls.glob == "compare prod":
             value = "Voulez-vous chercher un produit similaire meilleur pour votre santé?\n" \
                     "(999: oui), (C: retour aux catégories), (Q: quitter): "
         elif cls.glob == "alternative compare":
-            value = "Voulez vous chercher un produit plus sain dans les autres catégories affiliées au produit?\n" \
+            value = "Voulez vous continuer vos recherches dans les autres catégories affiliées au produit?\n" \
                     "(666: oui), (C: retour aux catégories), (Q: quitter): "
+        elif cls.glob == "show details":
+            value = "Voulez vous voir les détail du produit?\n" \
+                    "(Oui: tapez le numéro du produit) (Q: Quitter)): "
+        elif cls.glob == "save search":
+            value = "Voulez vous sauvegarder ce produit et les données s'y rapportant?\n " \
+                    "(000: Oui, (C: retour aux catégories), (Q: quitter): )"
 
         number = input(f"\n{value}")
         return number

@@ -74,32 +74,24 @@ def main():
                 ManageDb.display_products(ManageDb.prod_from_selected_cat)
                 ManageDb.glob = "display prod"
             elif ManageDb.glob == "display prod":
-                ManageDb.display_nutriscore()
+                ManageDb.display_nutriscore(ManageDb.action)
                 ManageDb.glob = "compare prod"
             elif ManageDb.glob == "compare prod" and ManageDb.action == "999":
                 ManageDb.compare_product_in_current_category()
                 ManageDb.glob = "alternative compare"
             elif ManageDb.glob == "alternative compare" and ManageDb.action == "666":
                 ManageDb.compare_product_in_affiliated_categories()
+                ManageDb.glob = "show details"
+            elif ManageDb.glob == "show details":
+                ManageDb.show_final_product_details()
+                ManageDb.glob = "save search"
+            elif ManageDb.glob == "save search" and ManageDb.action == "000":
+                ManageDb.ask_to_save_result()
 
         elif ManageDb.action != "Q":
             pass
 
     quit()
-
-
-
-    # allowed_id_selected = False
-    # while not allowed_id_selected:
-    #     allowed_id_selected = ManageDb.display_products(ManageDb.prod_from_selected_cat)
-    #
-    #     allowed_choice = False
-    #     while not allowed_choice:
-    #         allowed_choice = ManageDb.ready_to_compare()
-    #
-    #     ManageDb.compare_product_in_current_category()
-    #
-    #     ManageDb.compare_product_in_affiliated_categories()
 
     # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 
