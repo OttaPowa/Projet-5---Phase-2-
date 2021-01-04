@@ -57,10 +57,6 @@ def main():
     # application:
     print(GREETING_MESSAGE)
 
-    is_authenticated = False
-    while not is_authenticated:
-        is_authenticated = ManageDb.authentication()
-
     while ManageDb.action != "Q":
         ManageDb.action = ManageDb.selection()
 
@@ -75,6 +71,7 @@ def main():
                 ManageDb.glob = "display prod"
             elif ManageDb.glob == "display prod":
                 ManageDb.display_nutriscore(ManageDb.action)
+                ManageDb.base_product = ManageDb.action
                 ManageDb.glob = "compare prod"
             elif ManageDb.glob == "compare prod" and ManageDb.action == "999":
                 ManageDb.compare_product_in_current_category()

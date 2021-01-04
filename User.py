@@ -2,11 +2,10 @@
 
 
 class User:
-    user_log_list = []
+    instantiated_logs = []
 
     def __init__(self,
-                 user_name,
-                 password):
+                 args):
         """
             :param: user_name: name of the user
             :type: user_name: str
@@ -14,5 +13,6 @@ class User:
             :type: password: str
         """
 
-        self.user_name = user_name
-        self.password = password
+        self.user_name = args[0]
+        self.password = args[1]
+        self.instantiated_logs.append(self)

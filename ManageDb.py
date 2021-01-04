@@ -3,6 +3,9 @@
 import mysql.connector
 
 from constants import*
+from PrepareData import PrepareData
+from User import User
+from Saving import Saving
 
 
 class ManageDb:
@@ -20,12 +23,17 @@ class ManageDb:
 
     list_of_prod_id = []
 
-    prod_from_selected_cat = ()
-    current_product = []
-    list_of_id = []
+    prod_from_selected_cat = ()  # products belonging to the selected category
+    current_product = []  # current selected product with all of his data
+    list_of_id = []  # list of the ids
     id_name_and_nutriscore_list = []
-    glob = ""
-    action = ""
+    glob = ""  # variable to locate where we are in the process of application
+    action = ""  # input of the user
+    base_product = ""
+    alternative_product = ""  # id of the final product chosen by the user
+    original_and_alternative_prod_ids = []  # list of the ids of the base product and the final product
+
+
 
     @classmethod
     def verify_prerequisite(cls):
@@ -48,29 +56,17 @@ class ManageDb:
 
         user_name = input("MySql user name: ")
         password = input("Mysql password: ")
+        my_logs = [user_name, password]
 
         try:
             cls.connexion = mysql.connector.connect(user=user_name, password=password, database="projet5")
             cls.cursor = cls.connexion.cursor()
+            PrepareData.instantiate(DICT_OF_CLASSES['User'], my_logs)
+            cls.fill(INSERT_LOGS, User.instantiated_logs)
             return True
+
         except mysql.connector.errors.ProgrammingError:
             print("\nEchec de l'authentification auprès de MySql")
-            return False
-
-    @staticmethod
-    def authentication():
-        """
-            authentication of the user with they logs
-        """
-
-        user_name = input("Tapez votre nom d'utilisateur: ")
-        password = input("Tapez votre mot de passe: ")
-
-        if (user_name, password) == test:
-            print("\nIdentification réussie")
-            return True
-        else:
-            print("Echec de l'identification")
             return False
 
     @classmethod
@@ -85,9 +81,13 @@ class ManageDb:
                         DROP TABLE IF EXISTS product;
                         DROP TABLE IF EXISTS store;
                         DROP TABLE IF EXISTS brand;
+                        DROP TABLE IF EXISTS user;
+                        DROP TABLE IF EXISTS saving;
                         DROP TABLE IF EXISTS product_store;
                         DROP TABLE IF EXISTS product_brand;
                         DROP TABLE IF EXISTS product_category;
+                        DROP TABLE IF EXISTS user_saving;
+                        
                         
                         CREATE TABLE category(
                             id int NOT NULL AUTO_INCREMENT,
@@ -116,6 +116,20 @@ class ManageDb:
                             PRIMARY KEY(id))
                             ENGINE=InnoDB;
                             
+                        CREATE TABLE user (
+                            id int NOT NULL AUTO_INCREMENT,
+                            user_name varchar(200) DEFAULT NULL,
+                            password varchar(200) DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+                            
+                        CREATE TABLE saving (
+                            id int NOT NULL AUTO_INCREMENT,
+                            base_product_id int DEFAULT NULL,
+                            alternative_product_id int DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+                            
                         CREATE TABLE product_store (
                             id_product int DEFAULT NULL,
                             id_store int DEFAULT NULL)
@@ -130,6 +144,12 @@ class ManageDb:
                             id_product int DEFAULT NULL,
                             id_category int DEFAULT NULL)
                             ENGINE=InnoDB;
+                            
+                        CREATE TABLE user_saving (
+                            id_user int DEFAULT NULL,
+                            id_saving int DEFAULT NULL)
+                            ENGINE=InnoDB;
+                            
                         CREATE UNIQUE INDEX product_category_UI
                             ON product_category (id_product, id_category);
     
@@ -137,7 +157,10 @@ class ManageDb:
                             ON product_brand (id_product, id_brand);
     
                         CREATE UNIQUE INDEX product_store_UI
-                            ON product_store (id_product, id_store);    
+                            ON product_store (id_product, id_store);
+                            
+                        CREATE UNIQUE INDEX user_saving_UI
+                            ON user_saving (id_user, id_saving);    
                         
                         """
 
@@ -372,11 +395,13 @@ class ManageDb:
                 if item[0][2] == "a":
                     print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
                           f"Nutriscore de {item[0][2].capitalize()}")
+                    cls.alternative_product = item[0][0]
                     cls.ask_to_save_result()
 
                 elif item[0][2] == "b" and (my_nutriscore != "a" and my_nutriscore != "b"):
                     print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
                           f"Nutriscore de {item[0][2].capitalize()}")
+                    cls.alternative_product = item[0][0]
                     cls.ask_to_save_result()
 
                 else:
@@ -430,16 +455,18 @@ class ManageDb:
 
         stores_id = cls.select((COLUMN[6],), f'{NAME_OF_TABLE[4]} WHERE {COLUMN[8]} = {product_details[0][0]}')
 
-        print("\nLa/les boutiques ou vous trouverez ce produit sont:")
+        print("\nLa boutique ou vous trouverez ce produit est:")
         for my_store_id in stores_id:
             stores_details = cls.select((COLUMN[0],), f'{NAME_OF_TABLE[2]} WHERE {COLUMN[4]} = {my_store_id[0]}')
             cls.print_result(stores_details)
 
-        print("\nla/les marques qui vendent ce produit sont:")
+        print("\nla marque qui vendent ce produit est:")
         brands_id = cls.select((COLUMN[7],), f'{NAME_OF_TABLE[5]} WHERE {COLUMN[8]} = {product_details[0][0]}')
         for my_brand_id in brands_id:
             brands_details = cls.select((COLUMN[0],), f'{NAME_OF_TABLE[3]} WHERE {COLUMN[4]} = {my_brand_id[0]}')
             cls.print_result(brands_details)
+
+        cls.alternative_product = product_details[0][0]
 
     @classmethod
     def ask_to_save_result(cls):
@@ -449,16 +476,24 @@ class ManageDb:
             choice = input("Voulez vous enregister ce résultat de recherche?\n"
                            "(555: oui), (Entrée: afficher le prochain produit)")
             if choice == "555":
+                cls.original_and_alternative_prod_ids = [cls.base_product, cls.alternative_product]
+                print(cls.original_and_alternative_prod_ids)
                 cls.save_search()
 
             else:
                 pass
         else:
+            cls.original_and_alternative_prod_ids = [cls.base_product, cls.alternative_product]
+            print(cls.original_and_alternative_prod_ids)
             cls.save_search()
 
     @classmethod
     def save_search(cls):
         print("Sauvegarde de votre recherche")
+        print(cls.original_and_alternative_prod_ids)
+        PrepareData.instantiate(DICT_OF_CLASSES['Saving'], cls.original_and_alternative_prod_ids)
+        print(Saving.instantiated_saving)
+        cls.fill(INSERT_SAVINGS, Saving.instantiated_saving)
         "quit()"  # ou demander comme d'hab de quitter ou revenir aux cat
         pass
 
