@@ -1,6 +1,5 @@
 # -*-coding:UTF-8-*
 
-
 class Category:
     instantiated_categories = []
 

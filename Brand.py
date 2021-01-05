@@ -1,6 +1,5 @@
 # -*-coding:UTF-8-*
 
-
 class Brand:
     instantiated_brands = []
 

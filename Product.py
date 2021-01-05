@@ -1,6 +1,5 @@
 # -*-coding:UTF-8-*
 
-
 class Product:
     instantiated_products = []
 

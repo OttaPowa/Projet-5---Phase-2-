@@ -2,7 +2,6 @@
 
 import mysql.connector
 
-from constants import*
 from PrepareData import PrepareData
 from User import User
 from Saving import Saving
@@ -14,12 +13,13 @@ class ManageDb:
     """
 
     # class instances
-    #connexion = ""  # methode definitive
-    #cursor = ""
+    connexion = ""
+    cursor = ""
+    my_current_user_name = ""
 
     # methode rapide pour test
-    connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
-    cursor = connexion.cursor()
+    #connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
+    #cursor = connexion.cursor()
 
     list_of_prod_id = []
 
@@ -56,13 +56,15 @@ class ManageDb:
 
         user_name = input("MySql user name: ")
         password = input("Mysql password: ")
-        my_logs = [user_name, password]
+        my_logs = [(user_name, password)]
 
         try:
             cls.connexion = mysql.connector.connect(user=user_name, password=password, database="projet5")
             cls.cursor = cls.connexion.cursor()
-            PrepareData.instantiate(DICT_OF_CLASSES['User'], my_logs)
-            cls.fill(INSERT_LOGS, User.instantiated_logs)
+
+            # instantiate logs into class User
+            PrepareData.instantiate(User, my_logs)
+            cls.my_current_user_name = user_name
             return True
 
         except mysql.connector.errors.ProgrammingError:
@@ -76,17 +78,18 @@ class ManageDb:
         """
         print("Contruction de la base de données...")
 
+        # AJOUTER USE projet5 IF EXISTS /ELSE CREATE DATABASE projet5
+
         data_base_sql = """
+                        DROP TABLE IF EXISTS product_store;
+                        DROP TABLE IF EXISTS product_brand;
+                        DROP TABLE IF EXISTS product_category;
                         DROP TABLE IF EXISTS category;
                         DROP TABLE IF EXISTS product;
                         DROP TABLE IF EXISTS store;
                         DROP TABLE IF EXISTS brand;
-                        DROP TABLE IF EXISTS user;
                         DROP TABLE IF EXISTS saving;
-                        DROP TABLE IF EXISTS product_store;
-                        DROP TABLE IF EXISTS product_brand;
-                        DROP TABLE IF EXISTS product_category;
-                        DROP TABLE IF EXISTS user_saving;
+                        DROP TABLE IF EXISTS user;
                         
                         
                         CREATE TABLE category(
@@ -127,6 +130,7 @@ class ManageDb:
                             id int NOT NULL AUTO_INCREMENT,
                             base_product_id int DEFAULT NULL,
                             alternative_product_id int DEFAULT NULL,
+                            user_id int DEFAULT NULL,
                             PRIMARY KEY(id))
                             ENGINE=InnoDB;
                             
@@ -145,11 +149,6 @@ class ManageDb:
                             id_category int DEFAULT NULL)
                             ENGINE=InnoDB;
                             
-                        CREATE TABLE user_saving (
-                            id_user int DEFAULT NULL,
-                            id_saving int DEFAULT NULL)
-                            ENGINE=InnoDB;
-                            
                         CREATE UNIQUE INDEX product_category_UI
                             ON product_category (id_product, id_category);
     
@@ -159,14 +158,38 @@ class ManageDb:
                         CREATE UNIQUE INDEX product_store_UI
                             ON product_store (id_product, id_store);
                             
-                        CREATE UNIQUE INDEX user_saving_UI
-                            ON user_saving (id_user, id_saving);    
+                        ALTER TABLE product_category ADD CONSTRAINT product_category_FK 
+                            FOREIGN KEY (id_product) REFERENCES product(id);
+                            
+                        ALTER TABLE product_category ADD CONSTRAINT product_category_FK_1 
+                            FOREIGN KEY (id_category) REFERENCES category(id);    
+                            
+                        ALTER TABLE product_brand ADD CONSTRAINT product_brand_FK 
+                            FOREIGN KEY (id_brand) REFERENCES brand(id);
+                            
+                        ALTER TABLE product_brand ADD CONSTRAINT product_brand_FK_1 
+                            FOREIGN KEY (id_product) REFERENCES product(id);
+                            
+                        ALTER TABLE product_store ADD CONSTRAINT product_store_FK 
+                            FOREIGN KEY (id_store) REFERENCES store(id);
+                            
+                        ALTER TABLE product_store ADD CONSTRAINT product_store_FK_1 
+                            FOREIGN KEY (id_product) REFERENCES product(id);
+                            
+                        ALTER TABLE saving ADD CONSTRAINT saving_FK 
+                            FOREIGN KEY (user_id) REFERENCES user(id);    
                         
                         """
 
         # apply multi true to execute sql actions in chain
         for result in cls.cursor.execute(data_base_sql, multi=True):
             pass
+
+        # insert instantiated logs data into the user table
+        for item in User.instantiated_logs:
+            print(item.user_name, item.password)
+            cls.cursor.execute("INSERT INTO user (user_name, password) VALUES (%s, %s)",
+                               (item.user_name, item.password))
 
         cls.connexion.commit()
         print("La base de données à été crée.")
@@ -232,7 +255,6 @@ class ManageDb:
             except AttributeError:
                 try:
                     cls.cursor.execute(insert_statement, (item.name, item.url))
-
                 except AttributeError:
                     cls.cursor.execute(insert_statement, (item.name,))
 
@@ -321,7 +343,7 @@ class ManageDb:
             display the categories in screen and order them by name.
         """
 
-        result = cls.select((COLUMN[4], COLUMN[0]), f'{NAME_OF_TABLE[0]} ORDER BY name')
+        result = cls.select(("id", "name"), "category ORDER BY name")
         cls.print_result(result)
 
     @classmethod
@@ -329,8 +351,8 @@ class ManageDb:
         """
             get the products id of the selected category
         """
-        cls.prod_from_selected_cat = cls.select((COLUMN[8], COLUMN[5]),
-                                                f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{cls.action}"')
+        cls.prod_from_selected_cat = cls.select(("id_product", "id_category"),
+                                                f'product_category WHERE id_category = "{cls.action}"')
 
     @classmethod
     def display_products(cls, list_of_products):
@@ -341,12 +363,12 @@ class ManageDb:
         list_of_id = []
         cls.current_product = []
 
-        cat_name = cls.select((COLUMN[0],), f"{NAME_OF_TABLE[0]} WHERE {COLUMN[4]} = {list_of_products[0][1]}")
+        cat_name = cls.select(("name",), f"category WHERE id = {list_of_products[0][1]}")
         print(f"\nVoici les produits faisant partis de la catégorie {cat_name[0][0].replace(',','').capitalize()}:\n")
 
         # display product name and id depending of the category id
         for my_product in list_of_products:
-            result = cls.select((COLUMN[4], COLUMN[0], COLUMN[3]), f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
+            result = cls.select(("id", "name", "nutriscore"), f"product WHERE id = {my_product[0]}")
 
             # store the ids in a list so the list contains all the id product of the chosen category
             for my_id in result:
@@ -363,7 +385,7 @@ class ManageDb:
 
         # verify that the id product tipped by the user is in list_of_id
         if int(user_action) in cls.list_of_id:
-            second_result = cls.select(COLUMN[9], f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {user_action}")
+            second_result = cls.select("*", f"product WHERE id = {user_action}")
 
             # display the name and the nutriscore of the selected product
             for my_product in second_result:
@@ -378,6 +400,10 @@ class ManageDb:
             compare the product with others from his category, display those that have a nutriscore of A
         """
 
+
+        # METHODE A MODIFIER: PRENDRE EN CHARGE TOUS LES NUTRISCORE (ordre alpha pour classement)
+        # PASSSER A LA PHASE ULTIME (end cycle) et sortir de la boucle
+
         cls.id_name_and_nutriscore_list = []
         my_nutriscore = cls.current_product[0][4].capitalize()
 
@@ -387,8 +413,8 @@ class ManageDb:
 
         else:
             for my_product in cls.prod_from_selected_cat:
-                result = cls.select((COLUMN[4], COLUMN[0], COLUMN[3]),
-                                    f"{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {my_product[0]}")
+                result = cls.select(("id", "name", "nutriscore"),
+                                    f"product WHERE id = {my_product[0]} ORDER BY nutriscore")
                 cls.id_name_and_nutriscore_list.append(result)
 
             for item in cls.id_name_and_nutriscore_list:
@@ -422,15 +448,15 @@ class ManageDb:
         print("\nNous allons maintenant rechercher un produit dans les catégories affiliées au produit")
 
         # search the categories belonging to the product
-        prod_and_cat_ids = cls.select((COLUMN[5], COLUMN[8]), f"{NAME_OF_TABLE[6]} WHERE {COLUMN[8]} = {my_id}")
+        prod_and_cat_ids = cls.select(("id_category", "id_product"), f"product_category WHERE id_product = {my_id}")
 
         # clean to keep only the ids of the categories
         affiliated_categories_id = [cat_id[0] for cat_id in prod_and_cat_ids]
 
         # display product in each affiliated categories
         for my_cat_id in affiliated_categories_id:
-            prod_from_affiliated_cat = cls.select((COLUMN[8], COLUMN[5]),
-                                                  f'{NAME_OF_TABLE[6]} WHERE {COLUMN[5]} = "{my_cat_id}"')
+            prod_from_affiliated_cat = cls.select(("id_product", "id_category"),
+                                                  f'product_category WHERE id_category = "{my_cat_id}"')
 
             cls.display_products(prod_from_affiliated_cat)
 
@@ -449,21 +475,22 @@ class ManageDb:
     @classmethod
     def show_final_product_details(cls):
 
-        product_details = cls.select((COLUMN[9]), f'{NAME_OF_TABLE[1]} WHERE {COLUMN[4]} = {cls.action}')
+        product_details = cls.select("*", f'product WHERE id = {cls.action}')
         print(f"\nVous trouverez une fiche détaillée sur {product_details[0][1].capitalize()} en suivant le liens:\n"
               f"{product_details[0][2]}")
 
-        stores_id = cls.select((COLUMN[6],), f'{NAME_OF_TABLE[4]} WHERE {COLUMN[8]} = {product_details[0][0]}')
+        stores_id = cls.select(("id_store",), f'product_store WHERE id_product = {product_details[0][0]}')
 
         print("\nLa boutique ou vous trouverez ce produit est:")
         for my_store_id in stores_id:
-            stores_details = cls.select((COLUMN[0],), f'{NAME_OF_TABLE[2]} WHERE {COLUMN[4]} = {my_store_id[0]}')
+            stores_details = cls.select(("name",), f'store WHERE id = {my_store_id[0]}')
             cls.print_result(stores_details)
 
-        print("\nla marque qui vendent ce produit est:")
-        brands_id = cls.select((COLUMN[7],), f'{NAME_OF_TABLE[5]} WHERE {COLUMN[8]} = {product_details[0][0]}')
+        print("\nla marque qui vend ce produit est:")
+        brands_id = cls.select(("id_brand",), f'product_brand WHERE id_product = {product_details[0][0]}')
+
         for my_brand_id in brands_id:
-            brands_details = cls.select((COLUMN[0],), f'{NAME_OF_TABLE[3]} WHERE {COLUMN[4]} = {my_brand_id[0]}')
+            brands_details = cls.select(("name",), f'brand WHERE id = {my_brand_id[0]}')
             cls.print_result(brands_details)
 
         cls.alternative_product = product_details[0][0]
@@ -476,26 +503,41 @@ class ManageDb:
             choice = input("Voulez vous enregister ce résultat de recherche?\n"
                            "(555: oui), (Entrée: afficher le prochain produit)")
             if choice == "555":
-                cls.original_and_alternative_prod_ids = [cls.base_product, cls.alternative_product]
-                print(cls.original_and_alternative_prod_ids)
+                cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
                 cls.save_search()
 
             else:
                 pass
         else:
-            cls.original_and_alternative_prod_ids = [cls.base_product, cls.alternative_product]
-            print(cls.original_and_alternative_prod_ids)
+            cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
             cls.save_search()
 
     @classmethod
     def save_search(cls):
-        print("Sauvegarde de votre recherche")
-        print(cls.original_and_alternative_prod_ids)
-        PrepareData.instantiate(DICT_OF_CLASSES['Saving'], cls.original_and_alternative_prod_ids)
-        print(Saving.instantiated_saving)
-        cls.fill(INSERT_SAVINGS, Saving.instantiated_saving)
-        "quit()"  # ou demander comme d'hab de quitter ou revenir aux cat
-        pass
+        """
+            save the base product id and the alternative product id into the table saving.
+            Then link tables user and saving into user_saving to associate user and data.
+        """
+
+        print("Sauvegarde de votre recherche...")
+
+        # instantiate base_product_id and alternative_product_id into class Saving
+        PrepareData.instantiate(Saving, cls.original_and_alternative_prod_ids)
+
+        # get user id
+        print(cls.my_current_user_name)
+        user_id = cls.select(("id",), f'user WHERE user_name = "{cls.my_current_user_name}"')
+
+        print(user_id)
+
+        # insert instantiated data into the saving table
+        for item in Saving.instantiated_saving:
+            cls.cursor.execute("INSERT INTO saving (base_product_id, alternative_product_id, user_id) "
+                               "VALUES (%s, %s, %s)", (item.base_product_id, item.alternative_product_id,
+                                                       user_id[0][0]))
+
+        cls.connexion.commit()
+        cls.glob = "end cycle"
 
     @classmethod
     def selection(cls):
@@ -514,20 +556,22 @@ class ManageDb:
                     " vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
         elif cls.glob == "compare prod":
             value = "Voulez-vous chercher un produit similaire meilleur pour votre santé?\n" \
-                    "(999: oui), (C: retour aux catégories), (Q: quitter): "
+                    "(999): oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "alternative compare":
             value = "Voulez vous continuer vos recherches dans les autres catégories affiliées au produit?\n" \
-                    "(666: oui), (C: retour aux catégories), (Q: quitter): "
+                    "(666): oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "show details":
             value = "Voulez vous voir les détail du produit?\n" \
-                    "(Oui: tapez le numéro du produit) (Q: Quitter)): "
+                    "(tapez le numéro du produit): Oui, (Q): Quitter: "
         elif cls.glob == "save search":
             value = "Voulez vous sauvegarder ce produit et les données s'y rapportant?\n " \
-                    "(000: Oui, (C: retour aux catégories), (Q: quitter): )"
+                    "(555): Oui, (C): retour aux catégories, (Q): quitter: "
+        elif cls.glob == "end cycle":
+            value = " (C): revenir aux catégories ou (Q): quitter: "
 
         number = input(f"\n{value}")
         return number
 
-    # enregistrer automatiquement le résultat final d'une comparaison pour user
-    # demander ensuite si la personne souhaite avoir toutes les infos disponibles sur ce produit
-    # ou bien effectuer une nouvelle recherche ou quitter
+    @classmethod
+    def my_previous_researches(cls):
+        pass
