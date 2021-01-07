@@ -15,11 +15,15 @@ class ManageDb:
     # class instances
     connexion = ""
     cursor = ""
-    my_current_user_name = ""
+
+    # user logs
+    my_current_user_name = ""  # store the current user_name to
+    user_id = []  # store the current user_id
+    list_of_user_id = []  # list of the ids of all the users
 
     # methode rapide pour test
-    #connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
-    #cursor = connexion.cursor()
+    # connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
+    # cursor = connexion.cursor()
 
     list_of_prod_id = []
 
@@ -29,14 +33,12 @@ class ManageDb:
     id_name_and_nutriscore_list = []
     glob = ""  # variable to locate where we are in the process of application
     action = ""  # input of the user
-    base_product = ""
+    base_product = ""  # id of the original product chosen by the user
     alternative_product = ""  # id of the final product chosen by the user
     original_and_alternative_prod_ids = []  # list of the ids of the base product and the final product
 
-
-
-    @classmethod
-    def verify_prerequisite(cls):
+    @staticmethod
+    def verify_prerequisite():
         """
             verify if MySQL is installed on the client computer. if not print a message with à link to DL it.
         """
@@ -44,9 +46,10 @@ class ManageDb:
         print("\nBonjour, MySQL est nécéssaire pour faire fonctionner l'application."
               "\nVous pouvez l'installer en suivant ce lien: https://dev.mysql.com/downloads/mysql/#downloads\n")
 
-        user_input = input("Si vous possèdez un compte tapez 'Y' sinon tapez n'importe quelle autre touche: ")
+        user_input = input("Si vous possèdez un compte tapez 'Y' "
+                           "sinon tapez une touche pour quitter: ")
 
-        if user_input == "Y":
+        if user_input == "Y" or user_input == "y":
             pass
         else:
             quit()
@@ -71,24 +74,74 @@ class ManageDb:
             print("\nEchec de l'authentification auprès de MySql")
             return False
 
+    @staticmethod
+    def ask_to_update_database():
+        """
+            ask the user if they want to use the old database
+        """
+
+        question = input("\nVoulez mettre à jour la base de donnée?\n"
+                         "(Y): oui, (N): non: ")
+
+        if question == "Y" or question == "y":
+            return True
+        elif question == "N" or question == "n":
+            return False
+
+    @ classmethod
+    def access_to_stored_data(cls):
+        """
+            allow the user to access their previous saves data if exists
+        """
+
+        question = input("\nVoir vos recherches sauvegardées?\n (Y): oui, (N): non: ")
+
+        if question == "Y" or question == "y":
+            query = f"SELECT * FROM saving WHERE user_id = {cls.user_id[0][0]}"
+
+
+            test = "SELECT product.id, product.name, product.nutriscore FROM product" \
+                   "INNER JOIN saving ON product.id = saving.base_product_id" \
+                   "AND product.id = saving.alternative_product_id" \
+                   "INNER JOIN user ON saving.user_id = user.id" \
+                   "WHERE saving.user_id = {current_user_id} "
+            # en clair je veux recupérer les nom, nutrisocre et id des base_product_id et
+            # alternative_product_id la ou le user_id = current_user_id
+            # avant de les récupérer ca permet de vérifier s'ils existent pour proposer ou non ou
+            # afficher un message disant qu"il n'y en a pas
+            # ma query suffis non? pas besoin du test?
+
+            try:
+                result = cls.cursor.execute(query)
+                cls.print_result(result)
+
+            except TypeError:
+                print("\nAucune donnée n'a été trouvée!")
+
+        elif question == "N" or question == "n":
+            pass
+
     @classmethod
     def build(cls):
         """
             build the MySQL tables
         """
+
         print("Contruction de la base de données...")
 
         # AJOUTER USE projet5 IF EXISTS /ELSE CREATE DATABASE projet5
+        # retirer le drop de user_savings et de saving et user (pour conserver les logs et recherches)
 
         data_base_sql = """
+                        
                         DROP TABLE IF EXISTS product_store;
                         DROP TABLE IF EXISTS product_brand;
                         DROP TABLE IF EXISTS product_category;
                         DROP TABLE IF EXISTS category;
+                        DROP TABLE IF EXISTS saving;
                         DROP TABLE IF EXISTS product;
                         DROP TABLE IF EXISTS store;
                         DROP TABLE IF EXISTS brand;
-                        DROP TABLE IF EXISTS saving;
                         DROP TABLE IF EXISTS user;
                         
                         
@@ -158,6 +211,9 @@ class ManageDb:
                         CREATE UNIQUE INDEX product_store_UI
                             ON product_store (id_product, id_store);
                             
+                        CREATE UNIQUE INDEX user_logs_UI
+                            ON user (user_name, password);
+                            
                         ALTER TABLE product_category ADD CONSTRAINT product_category_FK 
                             FOREIGN KEY (id_product) REFERENCES product(id);
                             
@@ -177,35 +233,39 @@ class ManageDb:
                             FOREIGN KEY (id_product) REFERENCES product(id);
                             
                         ALTER TABLE saving ADD CONSTRAINT saving_FK 
-                            FOREIGN KEY (user_id) REFERENCES user(id);    
-                        
+                            FOREIGN KEY (user_id) REFERENCES user(id);
+                                
                         """
 
         # apply multi true to execute sql actions in chain
         for result in cls.cursor.execute(data_base_sql, multi=True):
             pass
 
-        # insert instantiated logs data into the user table
-        for item in User.instantiated_logs:
-            print(item.user_name, item.password)
-            cls.cursor.execute("INSERT INTO user (user_name, password) VALUES (%s, %s)",
-                               (item.user_name, item.password))
-
         cls.connexion.commit()
         print("La base de données à été crée.")
 
     @classmethod
-    def delete(cls, what_to_drop, name):
+    def insert_logs_and_get_id(cls):
         """
-            delete database, table, line or column
+            insert the user logs in the user table and get the id generated
         """
-        cls.cursor.execute(f"DROP {what_to_drop} {name}")
+
+        # insert instantiated logs into the user table
+        for item in User.instantiated_logs:
+            cls.cursor.execute("INSERT IGNORE INTO user (user_name, password) VALUES (%s, %s)",
+                               (item.user_name, item.password))
+        # get the id
+        cls.user_id = cls.select(("id",), f'user WHERE user_name = "{cls.my_current_user_name}"')
+        cls.list_of_user_id = cls.select(("id",), 'user')
+
+        cls.connexion.commit()
 
     @classmethod
     def show_tables(cls):
         """
             show all tables of the database
         """
+
         cls.cursor.execute("SHOW TABLES")
 
         # display tables in a readable way
@@ -217,6 +277,7 @@ class ManageDb:
         """
             select function in SQL
         """
+
         cls.list_of_prod_id = []  # clean the class instance
 
         fields = ", ".join(what_to_select)  # transform into a tuple
@@ -232,6 +293,7 @@ class ManageDb:
         """
             print the result of a SELECT
         """
+
         # loop on each rows, store the rows in a list and display them
         for items in results:
             cls.list_of_prod_id.append(items)
@@ -248,6 +310,7 @@ class ManageDb:
         """
             fill the database with the transformed API data
         """
+
         # try to raise AttributeError to select the right syntax
         for item in list_of_items:
             try:
@@ -351,6 +414,7 @@ class ManageDb:
         """
             get the products id of the selected category
         """
+
         cls.prod_from_selected_cat = cls.select(("id_product", "id_category"),
                                                 f'product_category WHERE id_category = "{cls.action}"')
 
@@ -407,7 +471,7 @@ class ManageDb:
         cls.id_name_and_nutriscore_list = []
         my_nutriscore = cls.current_product[0][4].capitalize()
 
-        if my_nutriscore == "A":
+        if my_nutriscore == "A" or my_nutriscore == "a":
             print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
 
@@ -422,7 +486,7 @@ class ManageDb:
                     print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
                           f"Nutriscore de {item[0][2].capitalize()}")
                     cls.alternative_product = item[0][0]
-                    cls.ask_to_save_result()
+                    cls.ask_to_save_result() # NON il faut d'abord passer a show détails
 
                 elif item[0][2] == "b" and (my_nutriscore != "a" and my_nutriscore != "b"):
                     print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
@@ -433,7 +497,6 @@ class ManageDb:
                 else:
                     pass
             print("\nIl n'y a pas (ou plus) de produit au nutriscore satisfaisant dans cette catégorie.")
-
 
 
 
@@ -474,6 +537,9 @@ class ManageDb:
 
     @classmethod
     def show_final_product_details(cls):
+        """
+            show the details of the chosen alternative product
+        """
 
         product_details = cls.select("*", f'product WHERE id = {cls.action}')
         print(f"\nVous trouverez une fiche détaillée sur {product_details[0][1].capitalize()} en suivant le liens:\n"
@@ -497,17 +563,21 @@ class ManageDb:
 
     @classmethod
     def ask_to_save_result(cls):
+        """
+            asks the user if they want to save the current product
+        """
 
         if cls.glob != "save search":
 
             choice = input("Voulez vous enregister ce résultat de recherche?\n"
-                           "(555: oui), (Entrée: afficher le prochain produit)")
-            if choice == "555":
+                           "(Y): oui, (Entrée): afficher le prochain produit")
+            if choice == "Y" or choice == "y":
                 cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
                 cls.save_search()
 
             else:
                 pass
+
         else:
             cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
             cls.save_search()
@@ -524,17 +594,11 @@ class ManageDb:
         # instantiate base_product_id and alternative_product_id into class Saving
         PrepareData.instantiate(Saving, cls.original_and_alternative_prod_ids)
 
-        # get user id
-        print(cls.my_current_user_name)
-        user_id = cls.select(("id",), f'user WHERE user_name = "{cls.my_current_user_name}"')
-
-        print(user_id)
-
         # insert instantiated data into the saving table
         for item in Saving.instantiated_saving:
             cls.cursor.execute("INSERT INTO saving (base_product_id, alternative_product_id, user_id) "
                                "VALUES (%s, %s, %s)", (item.base_product_id, item.alternative_product_id,
-                                                       user_id[0][0]))
+                                                       cls.user_id[0][0]))
 
         cls.connexion.commit()
         cls.glob = "end cycle"
@@ -556,22 +620,18 @@ class ManageDb:
                     " vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
         elif cls.glob == "compare prod":
             value = "Voulez-vous chercher un produit similaire meilleur pour votre santé?\n" \
-                    "(999): oui, (C): retour aux catégories, (Q): quitter: "
+                    "(Y): oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "alternative compare":
             value = "Voulez vous continuer vos recherches dans les autres catégories affiliées au produit?\n" \
-                    "(666): oui, (C): retour aux catégories, (Q): quitter: "
+                    "(Y): oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "show details":
             value = "Voulez vous voir les détail du produit?\n" \
                     "(tapez le numéro du produit): Oui, (Q): Quitter: "
         elif cls.glob == "save search":
             value = "Voulez vous sauvegarder ce produit et les données s'y rapportant?\n " \
-                    "(555): Oui, (C): retour aux catégories, (Q): quitter: "
+                    "(Y): Oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "end cycle":
             value = " (C): revenir aux catégories ou (Q): quitter: "
 
         number = input(f"\n{value}")
         return number
-
-    @classmethod
-    def my_previous_researches(cls):
-        pass
