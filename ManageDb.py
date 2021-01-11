@@ -94,29 +94,24 @@ class ManageDb:
             allow the user to access their previous saves data if exists
         """
 
+        user_id = cls.user_id[0][0]
         question = input("\nVoir vos recherches sauvegardées?\n (Y): oui, (N): non: ")
 
         if question == "Y" or question == "y":
-            query = f"SELECT * FROM saving WHERE user_id = {cls.user_id[0][0]}"
+            base_prod = f"product INNER JOIN saving ON product.id = saving.base_product_id " \
+                        f"WHERE saving.user_id = {user_id}"
+            result_bp = cls.select(("product.id", "product.name", "product.nutriscore"), base_prod)
 
+            alternative_prod = f"product INNER JOIN saving ON product.id = saving.alternative_product_id " \
+                               f"WHERE saving.user_id = {user_id}"
+            result_ap = cls.select(("product.id", "product.name", "product.nutriscore"), alternative_prod)
 
-            test = "SELECT product.id, product.name, product.nutriscore FROM product" \
-                   "INNER JOIN saving ON product.id = saving.base_product_id" \
-                   "AND product.id = saving.alternative_product_id" \
-                   "INNER JOIN user ON saving.user_id = user.id" \
-                   "WHERE saving.user_id = {current_user_id} "
-            # en clair je veux recupérer les nom, nutrisocre et id des base_product_id et
-            # alternative_product_id la ou le user_id = current_user_id
-            # avant de les récupérer ca permet de vérifier s'ils existent pour proposer ou non ou
-            # afficher un message disant qu"il n'y en a pas
-            # ma query suffis non? pas besoin du test?
-
-            try:
-                result = cls.cursor.execute(query)
-                cls.print_result(result)
-
-            except TypeError:
-                print("\nAucune donnée n'a été trouvée!")
+            if result_bp == []:
+                print("Aucune donnée sauvegardé n'a été trouvé pour votre utilisateur")
+            else:
+                print(f"Vous aviez trouvé {result_ap[0][1]} au nutriscore de {result_ap[0][2].capitalize()} "
+                      f"comme alternative à {result_bp[0][1]} et son nutriscore de {result_bp[0][2].capitalize()}")
+            input("Tapez une touche pour continuer")
 
         elif question == "N" or question == "n":
             pass
@@ -449,10 +444,10 @@ class ManageDb:
 
         # verify that the id product tipped by the user is in list_of_id
         if int(user_action) in cls.list_of_id:
-            second_result = cls.select("*", f"product WHERE id = {user_action}")
+            result = cls.select("*", f"product WHERE id = {user_action}")
 
             # display the name and the nutriscore of the selected product
-            for my_product in second_result:
+            for my_product in result:
                 cls.current_product.append(my_product)
                 print(f'\nLe nutriscore de {my_product[1]} est {my_product[4].capitalize()}')
         else:
@@ -461,25 +456,31 @@ class ManageDb:
     @classmethod
     def compare_product_in_current_category(cls):
         """
-            compare the product with others from his category, display those that have a nutriscore of A
+            compare the product with others from his category, display those that have the higher nutriscore
         """
-
 
         # METHODE A MODIFIER: PRENDRE EN CHARGE TOUS LES NUTRISCORE (ordre alpha pour classement)
         # PASSSER A LA PHASE ULTIME (end cycle) et sortir de la boucle
 
-        cls.id_name_and_nutriscore_list = []
-        my_nutriscore = cls.current_product[0][4].capitalize()
+        cls.id_name_and_nutriscore_list = []  # clean the class instance
+        my_nutriscore = cls.current_product[0][4].capitalize()  # set the nutriscore
 
         if my_nutriscore == "A" or my_nutriscore == "a":
             print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
 
+        # pkoi refaire une requette alors que j'ai déjà les données? de part la manière dont mon code est fait?
         else:
             for my_product in cls.prod_from_selected_cat:
+                # get the id, name and nutricore of the products of the category and store them in a list
+
                 result = cls.select(("id", "name", "nutriscore"),
                                     f"product WHERE id = {my_product[0]} ORDER BY nutriscore")
                 cls.id_name_and_nutriscore_list.append(result)
+
+                # LES CHANGEMENTS COMMENCeNT ICI!
+                # tester le forntionnement en finisqnat la methode de cette manièere et remplacant ask par show details
+                # ensuite tester avec un emethode en inner join pour la recup de prod en focntion de la cat
 
             for item in cls.id_name_and_nutriscore_list:
                 if item[0][2] == "a":
@@ -493,6 +494,12 @@ class ManageDb:
                           f"Nutriscore de {item[0][2].capitalize()}")
                     cls.alternative_product = item[0][0]
                     cls.ask_to_save_result()
+
+                elif item[0][2] == "c" and (my_nutriscore != "a" and my_nutriscore != "b" and my_nutriscore != "c"):
+                    pass
+                elif item[0][2] == "d" and (my_nutriscore != "a" and my_nutriscore != "b"
+                                            and my_nutriscore != "c" and my_nutriscore != "d"):
+                    pass
 
                 else:
                     pass
