@@ -31,6 +31,7 @@ class ManageDb:
     current_product = []  # current selected product with all of his data
     list_of_id = []  # list of the ids
     id_name_and_nutriscore_list = []
+    my_category_id = ""
     glob = ""  # variable to locate where we are in the process of application
     action = ""  # input of the user
     base_product = ""  # id of the original product chosen by the user
@@ -412,6 +413,7 @@ class ManageDb:
 
         cls.prod_from_selected_cat = cls.select(("id_product", "id_category"),
                                                 f'product_category WHERE id_category = "{cls.action}"')
+        cls.my_category_id = cls.action
 
     @classmethod
     def display_products(cls, list_of_products):
@@ -459,53 +461,33 @@ class ManageDb:
             compare the product with others from his category, display those that have the higher nutriscore
         """
 
-        # METHODE A MODIFIER: PRENDRE EN CHARGE TOUS LES NUTRISCORE (ordre alpha pour classement)
-        # PASSSER A LA PHASE ULTIME (end cycle) et sortir de la boucle
-
         cls.id_name_and_nutriscore_list = []  # clean the class instance
-        my_nutriscore = cls.current_product[0][4].capitalize()  # set the nutriscore
+        current_nutriscore = cls.current_product[0][4].capitalize()  # set the current nutriscore
+        current_id = cls.current_product[0][0]
 
-        if my_nutriscore == "A" or my_nutriscore == "a":
+        if current_nutriscore == "A" or current_nutriscore == "a":
             print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
 
-        # pkoi refaire une requette alors que j'ai déjà les données? de part la manière dont mon code est fait?
         else:
-            for my_product in cls.prod_from_selected_cat:
-                # get the id, name and nutricore of the products of the category and store them in a list
+            query = f"product INNER JOIN product_category ON product.id = product_category.id_product " \
+                   f"INNER JOIN category on product_category.id_category = category.id " \
+                   f"WHERE category.id = {cls.my_category_id} ORDER BY nutriscore"
 
-                result = cls.select(("id", "name", "nutriscore"),
-                                    f"product WHERE id = {my_product[0]} ORDER BY nutriscore")
-                cls.id_name_and_nutriscore_list.append(result)
+            prods_from_mother_cat = cls.select(("product.id", "product.name", "product.nutriscore"), query)
+            print(prods_from_mother_cat)
 
-                # LES CHANGEMENTS COMMENCeNT ICI!
-                # tester le forntionnement en finisqnat la methode de cette manièere et remplacant ask par show details
-                # ensuite tester avec un emethode en inner join pour la recup de prod en focntion de la cat
+            for my_product in prods_from_mother_cat:
+                if my_product[2] != current_nutriscore and my_product[0] != current_id:
 
-            for item in cls.id_name_and_nutriscore_list:
-                if item[0][2] == "a":
-                    print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
-                          f"Nutriscore de {item[0][2].capitalize()}")
-                    cls.alternative_product = item[0][0]
-                    cls.ask_to_save_result() # NON il faut d'abord passer a show détails
-
-                elif item[0][2] == "b" and (my_nutriscore != "a" and my_nutriscore != "b"):
-                    print(f"\nNous vous proposons {item[0][1].capitalize()} comme produit de substitution avec son "
-                          f"Nutriscore de {item[0][2].capitalize()}")
-                    cls.alternative_product = item[0][0]
-                    cls.ask_to_save_result()
-
-                elif item[0][2] == "c" and (my_nutriscore != "a" and my_nutriscore != "b" and my_nutriscore != "c"):
-                    pass
-                elif item[0][2] == "d" and (my_nutriscore != "a" and my_nutriscore != "b"
-                                            and my_nutriscore != "c" and my_nutriscore != "d"):
-                    pass
-
+                    print(f"\nNous vous proposons {my_product[1].capitalize()} comme produit de substitution avec son "
+                          f"Nutriscore de {my_product[2].capitalize()}.\nSon numéro de produit est {my_product[0]})")
+                    # passer glob en show details pour avoir le input de demande
+                    # cls.show_final_product_details()
                 else:
                     pass
+
             print("\nIl n'y a pas (ou plus) de produit au nutriscore satisfaisant dans cette catégorie.")
-
-
 
     @classmethod
     def compare_product_in_affiliated_categories(cls):
