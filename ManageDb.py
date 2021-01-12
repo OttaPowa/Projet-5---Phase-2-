@@ -12,28 +12,25 @@ class ManageDb:
         This class manage the interactions with the database
     """
 
-    # class instances
+    # MySQL variables
     connexion = ""
     cursor = ""
 
     # user logs
-    my_current_user_name = ""  # store the current user_name to
+    my_current_user_name = ""  # store the current user_name
     user_id = []  # store the current user_id
-    list_of_user_id = []  # list of the ids of all the users
+    list_of_user_id = []  # list of the ids of all the users (to verify if the current user already exists)
 
-    # methode rapide pour test
-    # connexion = mysql.connector.connect(user="root", password="Donn1eDark0", database="projet5")
-    # cursor = connexion.cursor()
-
-    list_of_prod_id = []
-
-    prod_from_selected_cat = ()  # products belonging to the selected category
-    current_product = []  # current selected product with all of his data
-    list_of_id = []  # list of the ids
-    id_name_and_nutriscore_list = []
-    my_category_id = ""
+    # main variables used by all the program
     glob = ""  # variable to locate where we are in the process of application
     action = ""  # input of the user
+
+    # variables used in different methods
+    list_of_id = []  # list of the product ids (used to check if the tipped id is inside the current category
+    my_category_id = ""  # get the current category id
+    current_product = []  # current selected product
+
+    # variables used for the instantiation leading to saving
     base_product = ""  # id of the original product chosen by the user
     alternative_product = ""  # id of the final product chosen by the user
     original_and_alternative_prod_ids = []  # list of the ids of the base product and the final product
@@ -63,7 +60,7 @@ class ManageDb:
         my_logs = [(user_name, password)]
 
         try:
-            cls.connexion = mysql.connector.connect(user=user_name, password=password, database="projet5")
+            cls.connexion = mysql.connector.connect(user=user_name, password=password)
             cls.cursor = cls.connexion.cursor()
 
             # instantiate logs into class User
@@ -75,8 +72,8 @@ class ManageDb:
             print("\nEchec de l'authentification auprès de MySql")
             return False
 
-    @staticmethod
-    def ask_to_update_database():
+    @classmethod
+    def ask_to_update_database(cls):
         """
             ask the user if they want to use the old database
         """
@@ -85,8 +82,10 @@ class ManageDb:
                          "(Y): oui, (N): non: ")
 
         if question == "Y" or question == "y":
+            cls.cursor.execute("USE projet5")
             return True
         elif question == "N" or question == "n":
+            cls.cursor.execute("USE projet5")
             return False
 
     @ classmethod
@@ -126,9 +125,6 @@ class ManageDb:
 
         print("Contruction de la base de données...")
 
-        # AJOUTER USE projet5 IF EXISTS /ELSE CREATE DATABASE projet5
-        # retirer le drop de user_savings et de saving et user (pour conserver les logs et recherches)
-
         data_base_sql = """
                         
                         DROP TABLE IF EXISTS product_store;
@@ -140,7 +136,10 @@ class ManageDb:
                         DROP TABLE IF EXISTS store;
                         DROP TABLE IF EXISTS brand;
                         DROP TABLE IF EXISTS user;
+                        DROP DATABASE IF EXISTS projet5;
                         
+                        CREATE DATABASE projet5;
+                        USE projet5;
                         
                         CREATE TABLE category(
                             id int NOT NULL AUTO_INCREMENT,
@@ -235,7 +234,7 @@ class ManageDb:
                         ALTER TABLE saving ADD CONSTRAINT saving_FK_1
                             FOREIGN KEY (base_product_id) REFERENCES product(id);
                             
-                        ALTER TABLE saving ADD CONBSTRAINT saving_FK_2
+                        ALTER TABLE saving ADD CONSTRAINT saving_FK_2
                             FOREIGN KEY (alternative_product_id) REFERENCES product(id);
                                 
                         """
@@ -264,18 +263,6 @@ class ManageDb:
         cls.connexion.commit()
 
     @classmethod
-    def show_tables(cls):
-        """
-            show all tables of the database
-        """
-
-        cls.cursor.execute("SHOW TABLES")
-
-        # display tables in a readable way
-        for lines in cls.cursor:
-            print(lines)
-
-    @classmethod
     def select(cls, what_to_select, name_of_table):
         """
             select function in SQL
@@ -299,7 +286,6 @@ class ManageDb:
 
         # loop on each rows, store the rows in a list and display them
         for items in results:
-            cls.list_of_prod_id.append(items)
             result_string = f"{str(items[0]).rjust(6, ' ').capitalize()}"
             for index, item in enumerate(items):
                 if index == 1:
@@ -338,7 +324,6 @@ class ManageDb:
         for product in instantiated_list:
             my_list_of_product_id = []  # renew the list in each lap
             my_product_id = ()  # renew the product id in each lap
-            my_item_id = ()  # renew the item id in each lap
 
             # select the id of the product where the name is "product.name"
             query_product_id = f'SELECT id FROM {name_of_table1} WHERE name = "{product.name}"'
@@ -423,6 +408,12 @@ class ManageDb:
                             f"INNER JOIN category ON category.id = product_category.id_category " \
                             f"WHERE category.id = {my_category}"
         prods_id_name_nutriscore = cls.select(("product.id", "product.name", "product.nutriscore"), my_products_query)
+
+        # get the category name
+        cat_name = cls.select(("category.name",), f"category WHERE category.id = {my_category}")
+        print(f"\nVoici les produits de la catégorie {cat_name[0][0].capitalize()}:\n")
+
+        # print the list of products using the class method
         cls.print_result(prods_id_name_nutriscore)
 
         # set the current category id
@@ -492,22 +483,22 @@ class ManageDb:
             get and display the products with a nutriscore of A in affiliated categories of the chosen product
         """
 
-        print("\nNous allons maintenant rechercher un produit dans les catégories affiliées au produit")
+        print("\nNous allons maintenant rechercher un produit dans les catégories affiliées au produit...")
 
         # get the categories ids affiliated to the product_id
         query_cat_id_and_name = f"category INNER JOIN product_category ON category.id = product_category.id_category " \
                                 f"WHERE product_category.id_product = {product_id}"
-        categories_ids = cls.select(("category.id", "category.name"), query_cat_id_and_name)
+        categories_ids = cls.select(("category.id",), query_cat_id_and_name)
 
         # display products in each affiliated categories
         for my_cat_id in categories_ids:
-            print(f"\nVoici les produits de la catégorie {my_cat_id[1].capitalize()}")
             cls.display_products(my_cat_id[0])
 
             choose_prod = input("\nVoulez vous explorer un produit de cette liste?\n"
                                 "(Oui: tapez le numéro du produit), (Entrée: Continuer vers une autre catégorie)"
                                 ", (Q: Quitter): ")
 
+            # break the loop and launch class method display_nutriscore if the user enter a product number
             if choose_prod.isdigit():
                 cls.display_nutriscore(choose_prod)
                 break
@@ -562,13 +553,14 @@ class ManageDb:
 
         if cls.glob != "save search":
             choice = input("\nVoulez vous enregister ce résultat de recherche?\n"
-                           "(Y): oui, (Entrée): afficher le prochain produit: ")
+                           "(Y): oui, (Entrée): afficher le prochain produit, (Q): quitter:  ")
 
-            # store the base product id and the final product id to instantiate
+            # store the base product id and the final product id to instantiate later
             if choice == "Y" or choice == "y":
                 cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
                 cls.save_search()
-
+            elif choice == "Q" or choice == "q":
+                quit()
             else:
                 pass
         else:
@@ -612,7 +604,7 @@ class ManageDb:
             value = "Tapez le numéro du produit que vous souhaitez explorer\n" \
                     "vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
         elif cls.glob == "compare prod":
-            value = "Voulez-vous chercher un produit similaire meilleur pour votre santé?\n" \
+            value = "Voulez-vous chercher un produit similaire avec un meilleur nutriscore?\n" \
                     "(Y): oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "alternative compare":
             value = "Il n'y a pas ou plus de produit au nutriscore supérieur dans la catégorie actuelle. " \

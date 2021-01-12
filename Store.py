@@ -9,7 +9,7 @@ class Store(Brand):
     def __init__(self, args):
 
         """
-            child class of Category
+            child class of Brand
         """
         Brand.__init__(self, args)
         self.instantiated_stores.append(self)
