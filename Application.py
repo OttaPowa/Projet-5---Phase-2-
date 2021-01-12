@@ -69,7 +69,7 @@ def main():
         pass
 
     print("\nCette application vous permet de rechercher un produit pour lequel vous souhaitez trouver un équivalent"
-          " plus sain.\nNaviguez a travers les catégories pour trouver le produit que vous désirez.\n")
+          " plus sain.\nNaviguez a travers les catégories pour trouver le produit que vous désirez.")
 
     while ManageDb.action != "Q" or ManageDb.action != "q":
         ManageDb.action = ManageDb.selection()
@@ -78,10 +78,16 @@ def main():
             ManageDb.glob = "display cat"
             ManageDb.display_categories()
 
+        elif ManageDb.action == "S" or ManageDb.action == "s":
+            ManageDb.ask_to_save_result()
+            ManageDb.glob = "end cycle"
+
+        elif ManageDb.action == "Q" or ManageDb.action == "q":
+            quit()
+
         elif ManageDb.action.isdigit() or ManageDb.action == "Y" or ManageDb.action == "y":
             if ManageDb.glob == "display cat":
-                ManageDb.get_products_from_selected_category()
-                ManageDb.display_products(ManageDb.prod_from_selected_cat)
+                ManageDb.display_products(ManageDb.action)
                 ManageDb.glob = "display prod"
             elif ManageDb.glob == "display prod":
                 ManageDb.display_nutriscore(ManageDb.action)
@@ -91,10 +97,10 @@ def main():
                 ManageDb.compare_product_in_current_category()
                 ManageDb.glob = "alternative compare"
             elif ManageDb.glob == "alternative compare" and (ManageDb.action == "Y" or ManageDb.action == "y"):
-                ManageDb.compare_product_in_affiliated_categories()
+                ManageDb.compare_product_in_affiliated_categories(ManageDb.current_product[0][0])
                 ManageDb.glob = "show details"
             elif ManageDb.glob == "show details":
-                ManageDb.show_final_product_details()
+                ManageDb.show_final_product_details(ManageDb.action)
                 ManageDb.glob = "save search"
             elif ManageDb.glob == "save search" and (ManageDb.action == "Y" or ManageDb.action == "y"):
                 ManageDb.ask_to_save_result()
@@ -104,8 +110,6 @@ def main():
             pass
 
     quit()
-
-    # choix de stocker ses résultat dans la bd, de faire une nouvelle recherche et de quitter
 
 
 if __name__ == '__main__':

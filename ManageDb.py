@@ -81,7 +81,7 @@ class ManageDb:
             ask the user if they want to use the old database
         """
 
-        question = input("\nVoulez mettre à jour la base de donnée?\n"
+        question = input("\nVoulez mettre à jour la base de donnée? ATTENTION: ceci supprimera vos sauvegardes!\n"
                          "(Y): oui, (N): non: ")
 
         if question == "Y" or question == "y":
@@ -99,20 +99,21 @@ class ManageDb:
         question = input("\nVoir vos recherches sauvegardées?\n (Y): oui, (N): non: ")
 
         if question == "Y" or question == "y":
-            base_prod = f"product INNER JOIN saving ON product.id = saving.base_product_id " \
+            base_prod = f"saving " \
+                        f"INNER JOIN product AS product1 ON product1.id = saving.base_product_id " \
+                        f"INNER JOIN product AS product2 ON product2.id = saving.alternative_product_id " \
                         f"WHERE saving.user_id = {user_id}"
-            result_bp = cls.select(("product.id", "product.name", "product.nutriscore"), base_prod)
-
-            alternative_prod = f"product INNER JOIN saving ON product.id = saving.alternative_product_id " \
-                               f"WHERE saving.user_id = {user_id}"
-            result_ap = cls.select(("product.id", "product.name", "product.nutriscore"), alternative_prod)
+            result_bp = cls.select(("product1.id", "product1.name", "product1.nutriscore",
+                                    "product2.id", "product2.name", "product2.nutriscore"), base_prod)
 
             if result_bp == []:
                 print("Aucune donnée sauvegardé n'a été trouvé pour votre utilisateur")
             else:
-                print(f"Vous aviez trouvé {result_ap[0][1]} au nutriscore de {result_ap[0][2].capitalize()} "
-                      f"comme alternative à {result_bp[0][1]} et son nutriscore de {result_bp[0][2].capitalize()}")
-            input("Tapez une touche pour continuer")
+                print("Vous aviez trouvé :")
+                for index, result in enumerate(result_bp):
+                    print(f"    {index + 1}) {result[1]} au nutriscore de {result[2].capitalize()} "
+                          f"comme alternative à {result[4]} et son nutriscore de {result[5].capitalize()}")
+                input("Tapez une touche pour continuer")
 
         elif question == "N" or question == "n":
             pass
@@ -230,6 +231,12 @@ class ManageDb:
                             
                         ALTER TABLE saving ADD CONSTRAINT saving_FK 
                             FOREIGN KEY (user_id) REFERENCES user(id);
+                            
+                        ALTER TABLE saving ADD CONSTRAINT saving_FK_1
+                            FOREIGN KEY (base_product_id) REFERENCES product(id);
+                            
+                        ALTER TABLE saving ADD CONBSTRAINT saving_FK_2
+                            FOREIGN KEY (alternative_product_id) REFERENCES product(id);
                                 
                         """
 
@@ -406,36 +413,23 @@ class ManageDb:
         cls.print_result(result)
 
     @classmethod
-    def get_products_from_selected_category(cls):
-        """
-            get the products id of the selected category
-        """
-
-        cls.prod_from_selected_cat = cls.select(("id_product", "id_category"),
-                                                f'product_category WHERE id_category = "{cls.action}"')
-        cls.my_category_id = cls.action
-
-    @classmethod
-    def display_products(cls, list_of_products):
+    def display_products(cls, my_category):
         """
             display the products names and ids of the category chosen before
         """
 
-        list_of_id = []
-        cls.current_product = []
+        # get the product id, name and nutriscore depending of the category id
+        my_products_query = f"product INNER JOIN product_category ON product.id = product_category.id_product " \
+                            f"INNER JOIN category ON category.id = product_category.id_category " \
+                            f"WHERE category.id = {my_category}"
+        prods_id_name_nutriscore = cls.select(("product.id", "product.name", "product.nutriscore"), my_products_query)
+        cls.print_result(prods_id_name_nutriscore)
 
-        cat_name = cls.select(("name",), f"category WHERE id = {list_of_products[0][1]}")
-        print(f"\nVoici les produits faisant partis de la catégorie {cat_name[0][0].replace(',','').capitalize()}:\n")
+        # set the current category id
+        cls.my_category_id = my_category
 
-        # display product name and id depending of the category id
-        for my_product in list_of_products:
-            result = cls.select(("id", "name", "nutriscore"), f"product WHERE id = {my_product[0]}")
-
-            # store the ids in a list so the list contains all the id product of the chosen category
-            for my_id in result:
-                list_of_id.append(my_id[0])
-            cls.print_result(result)
-
+        # set the ids of the products to compare with user interactions
+        list_of_id = [prod_id[0] for prod_id in prods_id_name_nutriscore]
         cls.list_of_id = list_of_id
 
     @classmethod
@@ -446,6 +440,7 @@ class ManageDb:
 
         # verify that the id product tipped by the user is in list_of_id
         if int(user_action) in cls.list_of_id:
+            # select every data of the current product for incoming usages
             result = cls.select("*", f"product WHERE id = {user_action}")
 
             # display the name and the nutriscore of the selected product
@@ -461,56 +456,53 @@ class ManageDb:
             compare the product with others from his category, display those that have the higher nutriscore
         """
 
-        cls.id_name_and_nutriscore_list = []  # clean the class instance
         current_nutriscore = cls.current_product[0][4].capitalize()  # set the current nutriscore
-        current_id = cls.current_product[0][0]
+        current_id = cls.current_product[0][0]  # set the current id
 
         if current_nutriscore == "A" or current_nutriscore == "a":
             print('\nVous avez déjà un produit qui a un nutriscore de A, impossible de vous proposer quelque-chose de '
                   'mieux!')
 
         else:
+            # get the products id, name and nutriscore in the current category
             query = f"product INNER JOIN product_category ON product.id = product_category.id_product " \
                    f"INNER JOIN category on product_category.id_category = category.id " \
                    f"WHERE category.id = {cls.my_category_id} ORDER BY nutriscore"
-
             prods_from_mother_cat = cls.select(("product.id", "product.name", "product.nutriscore"), query)
-            print(prods_from_mother_cat)
 
+            # display the product with the higher nutriscore til reach the nutriscore of the current product
             for my_product in prods_from_mother_cat:
-                if my_product[2] != current_nutriscore and my_product[0] != current_id:
-
+                if my_product[2].capitalize() < current_nutriscore and my_product[0] != current_id:
                     print(f"\nNous vous proposons {my_product[1].capitalize()} comme produit de substitution avec son "
-                          f"Nutriscore de {my_product[2].capitalize()}.\nSon numéro de produit est {my_product[0]})")
-                    # passer glob en show details pour avoir le input de demande
-                    # cls.show_final_product_details()
+                          f"Nutriscore de {my_product[2].capitalize()}.")
+
+                    # query the user. invoke the next method in line and break the loop
+                    choice = input("\nVoulez vous voir les détails de ce produit?\n(Y): Oui, (N): Non: ")
+                    if choice == "y" or choice == "Y":
+                        cls.show_final_product_details(my_product[0])
+                        break
+                    else:
+                        pass
                 else:
                     pass
 
-            print("\nIl n'y a pas (ou plus) de produit au nutriscore satisfaisant dans cette catégorie.")
-
     @classmethod
-    def compare_product_in_affiliated_categories(cls):
+    def compare_product_in_affiliated_categories(cls, product_id):
         """
             get and display the products with a nutriscore of A in affiliated categories of the chosen product
         """
 
-        my_id = cls.current_product[0][0]
-
         print("\nNous allons maintenant rechercher un produit dans les catégories affiliées au produit")
 
-        # search the categories belonging to the product
-        prod_and_cat_ids = cls.select(("id_category", "id_product"), f"product_category WHERE id_product = {my_id}")
+        # get the categories ids affiliated to the product_id
+        query_cat_id_and_name = f"category INNER JOIN product_category ON category.id = product_category.id_category " \
+                                f"WHERE product_category.id_product = {product_id}"
+        categories_ids = cls.select(("category.id", "category.name"), query_cat_id_and_name)
 
-        # clean to keep only the ids of the categories
-        affiliated_categories_id = [cat_id[0] for cat_id in prod_and_cat_ids]
-
-        # display product in each affiliated categories
-        for my_cat_id in affiliated_categories_id:
-            prod_from_affiliated_cat = cls.select(("id_product", "id_category"),
-                                                  f'product_category WHERE id_category = "{my_cat_id}"')
-
-            cls.display_products(prod_from_affiliated_cat)
+        # display products in each affiliated categories
+        for my_cat_id in categories_ids:
+            print(f"\nVoici les produits de la catégorie {my_cat_id[1].capitalize()}")
+            cls.display_products(my_cat_id[0])
 
             choose_prod = input("\nVoulez vous explorer un produit de cette liste?\n"
                                 "(Oui: tapez le numéro du produit), (Entrée: Continuer vers une autre catégorie)"
@@ -519,36 +511,48 @@ class ManageDb:
             if choose_prod.isdigit():
                 cls.display_nutriscore(choose_prod)
                 break
-            elif choose_prod == "Q":
+            elif choose_prod == "Q" or choose_prod == "q":
                 quit()
             else:
                 pass
 
+        print("\nDésolé mais vous avez épuisé tous les produits de toutes les  catégories affiliées...\n")
+
     @classmethod
-    def show_final_product_details(cls):
+    def show_final_product_details(cls, product_id):
         """
             show the details of the chosen alternative product
         """
 
-        product_details = cls.select("*", f'product WHERE id = {cls.action}')
-        print(f"\nVous trouverez une fiche détaillée sur {product_details[0][1].capitalize()} en suivant le liens:\n"
-              f"{product_details[0][2]}")
+        # get and display the Open Food Facts url of the product
+        product_details = cls.select("*", f'product WHERE id = {product_id}')
+        print(f"\nVous trouverez une fiche détaillée sur {product_details[0][1].capitalize()} en suivant le lien:\n"
+              f"  - {product_details[0][2]}")
 
-        stores_id = cls.select(("id_store",), f'product_store WHERE id_product = {product_details[0][0]}')
+        # get the stores of the product
+        query_store = f"store INNER JOIN product_store ON store.id = product_store.id_store " \
+                      f"INNER JOIN product ON product.id = product_store.id_product " \
+                      f"WHERE product.id = {product_id}"
+        stores = cls.select(("store.name",), query_store)
 
-        print("\nLa boutique ou vous trouverez ce produit est:")
-        for my_store_id in stores_id:
-            stores_details = cls.select(("name",), f'store WHERE id = {my_store_id[0]}')
-            cls.print_result(stores_details)
+        # display the stores name
+        print("\nVous trouverez ce produit chez:")
+        for store in stores:
+            print(f"  - {store[0].capitalize()}")
 
-        print("\nla marque qui vend ce produit est:")
-        brands_id = cls.select(("id_brand",), f'product_brand WHERE id_product = {product_details[0][0]}')
+        # get the brands of the product
+        query_brand = f"brand INNER JOIN product_brand ON brand.id = product_brand.id_brand " \
+                      f"INNER JOIN product ON product.id = product_brand.id_product " \
+                      f"WHERE product.id = {product_id}"
+        brands = cls.select(("brand.name",), query_brand)
 
-        for my_brand_id in brands_id:
-            brands_details = cls.select(("name",), f'brand WHERE id = {my_brand_id[0]}')
-            cls.print_result(brands_details)
+        # display the brands name
+        print("\nCe produit est vendu sous la(les) marque(s):")
+        for brand in brands:
+            print(f"  - {brand[0].capitalize()}")
 
         cls.alternative_product = product_details[0][0]
+        cls.glob = "save search"
 
     @classmethod
     def ask_to_save_result(cls):
@@ -557,16 +561,16 @@ class ManageDb:
         """
 
         if cls.glob != "save search":
+            choice = input("\nVoulez vous enregister ce résultat de recherche?\n"
+                           "(Y): oui, (Entrée): afficher le prochain produit: ")
 
-            choice = input("Voulez vous enregister ce résultat de recherche?\n"
-                           "(Y): oui, (Entrée): afficher le prochain produit")
+            # store the base product id and the final product id to instantiate
             if choice == "Y" or choice == "y":
                 cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
                 cls.save_search()
 
             else:
                 pass
-
         else:
             cls.original_and_alternative_prod_ids = [(cls.base_product, cls.alternative_product)]
             cls.save_search()
@@ -590,7 +594,7 @@ class ManageDb:
                                                        cls.user_id[0][0]))
 
         cls.connexion.commit()
-        cls.glob = "end cycle"
+        print("Vos produit ont bien été enregistrés.")
 
     @classmethod
     def selection(cls):
@@ -601,26 +605,27 @@ class ManageDb:
         value = ""
 
         if cls.glob == "":
-            value = " Tapez (C) pour afficher les catégories: "
+            value = "Tapez (C) pour afficher les catégories: "
         elif cls.glob == "display cat":
-            value = " Tapez le numéro de la catégorie que vous souhaitez explorer vous pouvez quitter en tapant (Q): "
+            value = "Tapez le numéro de la catégorie que vous souhaitez explorer vous pouvez quitter en tapant (Q): "
         elif cls.glob == "display prod":
-            value = " Tapez le numéro du produit que vous souhaitez explorer\n" \
-                    " vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
+            value = "Tapez le numéro du produit que vous souhaitez explorer\n" \
+                    "vous pouvez quitter en tapant (Q) et revenir aux catégories en tapant (C): "
         elif cls.glob == "compare prod":
             value = "Voulez-vous chercher un produit similaire meilleur pour votre santé?\n" \
                     "(Y): oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "alternative compare":
-            value = "Voulez vous continuer vos recherches dans les autres catégories affiliées au produit?\n" \
-                    "(Y): oui, (C): retour aux catégories, (Q): quitter: "
+            value = "Il n'y a pas ou plus de produit au nutriscore supérieur dans la catégorie actuelle. " \
+                    "Chercher dans d'autres catégories?\n" \
+                    "(Y): oui, (S): ce produit me convient, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "show details":
             value = "Voulez vous voir les détail du produit?\n" \
-                    "(tapez le numéro du produit): Oui, (Q): Quitter: "
+                    "(tapez le numéro du produit): Oui, (C): retour aux catégories (Q): Quitter: "
         elif cls.glob == "save search":
-            value = "Voulez vous sauvegarder ce produit et les données s'y rapportant?\n " \
+            value = "Voulez vous sauvegarder ce produit et les données s'y rapportant?\n" \
                     "(Y): Oui, (C): retour aux catégories, (Q): quitter: "
         elif cls.glob == "end cycle":
-            value = " (C): revenir aux catégories ou (Q): quitter: "
+            value = "(C): revenir aux catégories ou (Q): quitter: "
 
         number = input(f"\n{value}")
         return number
