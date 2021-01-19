@@ -105,7 +105,7 @@ class ManageDb:
             result_bp = cls.select(("product1.id", "product1.name", "product1.nutriscore",
                                     "product2.id", "product2.name", "product2.nutriscore"), base_prod)
 
-            if result_bp == []:
+            if not result_bp:
                 print("Aucune donnée sauvegardé n'a été trouvé pour votre utilisateur")
             else:
                 print("Vous aviez trouvé :")
@@ -486,9 +486,9 @@ class ManageDb:
         print("\nNous allons maintenant rechercher un produit dans les catégories affiliées au produit...")
 
         # get the categories ids affiliated to the product_id
-        query_cat_id_and_name = f"category INNER JOIN product_category ON category.id = product_category.id_category " \
-                                f"WHERE product_category.id_product = {product_id}"
-        categories_ids = cls.select(("category.id",), query_cat_id_and_name)
+        query_cat_id = f"category INNER JOIN product_category ON category.id = product_category.id_category " \
+                       f"WHERE product_category.id_product = {product_id}"
+        categories_ids = cls.select(("category.id",), query_cat_id)
 
         # display products in each affiliated categories
         for my_cat_id in categories_ids:

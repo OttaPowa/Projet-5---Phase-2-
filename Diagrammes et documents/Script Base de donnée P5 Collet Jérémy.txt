@@ -1,0 +1,113 @@
+data_base_sql = """
+                        
+                        DROP TABLE IF EXISTS product_store;
+                        DROP TABLE IF EXISTS product_brand;
+                        DROP TABLE IF EXISTS product_category;
+                        DROP TABLE IF EXISTS category;
+                        DROP TABLE IF EXISTS saving;
+                        DROP TABLE IF EXISTS product;
+                        DROP TABLE IF EXISTS store;
+                        DROP TABLE IF EXISTS brand;
+                        DROP TABLE IF EXISTS user;
+                        DROP DATABASE IF EXISTS projet5;
+                        
+                        CREATE DATABASE projet5;
+                        USE projet5;
+                        
+                        CREATE TABLE category(
+                            id int NOT NULL AUTO_INCREMENT,
+                            name varchar(200) DEFAULT NULL,
+                            url varchar(300) DEFAULT NULL,
+                            PRIMARY KEY(id))ENGINE=InnoDB;
+
+                        CREATE TABLE product (
+                            id int NOT NULL AUTO_INCREMENT,
+                            name varchar(200) DEFAULT NULL,
+                            url varchar(300) DEFAULT NULL,
+                            picture_url varchar(300) DEFAULT NULL,
+                            nutriscore varchar(5) DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+
+                        CREATE TABLE store (
+                            id int NOT NULL AUTO_INCREMENT,
+                            name varchar(200) DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+
+                        CREATE TABLE brand (
+                            id int NOT NULL AUTO_INCREMENT,
+                            name varchar(200) DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+                            
+                        CREATE TABLE user (
+                            id int NOT NULL AUTO_INCREMENT,
+                            user_name varchar(200) DEFAULT NULL,
+                            password varchar(200) DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+                            
+                        CREATE TABLE saving (
+                            id int NOT NULL AUTO_INCREMENT,
+                            base_product_id int DEFAULT NULL,
+                            alternative_product_id int DEFAULT NULL,
+                            user_id int DEFAULT NULL,
+                            PRIMARY KEY(id))
+                            ENGINE=InnoDB;
+                            
+                        CREATE TABLE product_store (
+                            id_product int DEFAULT NULL,
+                            id_store int DEFAULT NULL)
+                            ENGINE=InnoDB;
+                            
+                        CREATE TABLE product_brand (
+                            id_product int DEFAULT NULL,
+                            id_brand int DEFAULT NULL)
+                            ENGINE=InnoDB;
+                            
+                        CREATE TABLE product_category (
+                            id_product int DEFAULT NULL,
+                            id_category int DEFAULT NULL)
+                            ENGINE=InnoDB;
+                            
+                        CREATE UNIQUE INDEX product_category_UI
+                            ON product_category (id_product, id_category);
+    
+                        CREATE UNIQUE INDEX product_brand_UI
+                            ON product_brand (id_product, id_brand);
+    
+                        CREATE UNIQUE INDEX product_store_UI
+                            ON product_store (id_product, id_store);
+                            
+                        CREATE UNIQUE INDEX user_logs_UI
+                            ON user (user_name, password);
+                            
+                        ALTER TABLE product_category ADD CONSTRAINT product_category_FK 
+                            FOREIGN KEY (id_product) REFERENCES product(id);
+                            
+                        ALTER TABLE product_category ADD CONSTRAINT product_category_FK_1 
+                            FOREIGN KEY (id_category) REFERENCES category(id);    
+                            
+                        ALTER TABLE product_brand ADD CONSTRAINT product_brand_FK 
+                            FOREIGN KEY (id_brand) REFERENCES brand(id);
+                            
+                        ALTER TABLE product_brand ADD CONSTRAINT product_brand_FK_1 
+                            FOREIGN KEY (id_product) REFERENCES product(id);
+                            
+                        ALTER TABLE product_store ADD CONSTRAINT product_store_FK 
+                            FOREIGN KEY (id_store) REFERENCES store(id);
+                            
+                        ALTER TABLE product_store ADD CONSTRAINT product_store_FK_1 
+                            FOREIGN KEY (id_product) REFERENCES product(id);
+                            
+                        ALTER TABLE saving ADD CONSTRAINT saving_FK 
+                            FOREIGN KEY (user_id) REFERENCES user(id);
+                            
+                        ALTER TABLE saving ADD CONSTRAINT saving_FK_1
+                            FOREIGN KEY (base_product_id) REFERENCES product(id);
+                            
+                        ALTER TABLE saving ADD CONSTRAINT saving_FK_2
+                            FOREIGN KEY (alternative_product_id) REFERENCES product(id);
+                                
+                        """
