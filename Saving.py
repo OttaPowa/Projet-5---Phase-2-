@@ -8,7 +8,8 @@ class Saving:
         """
             :param: base_product_id: id of the base product
             :type: base_product_id: int
-            :param: alternative_product_id: id of the final alternative chosen by the user
+            :param: alternative_product_id: id of the final alternative
+                    chosen by the user
             :type: alternative_product_id: int
         """
 
